@@ -9,6 +9,11 @@
     --color-blog: #7ecef4;
 }
 
+/* ★追加：要素の幅に余白を含める（右側の余白・はみ出しを防止）★ */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
     font-family: var(--font-base);
@@ -17,8 +22,10 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    /* ★追加：スマホで画面が横にグラグラ動くのを完全に防ぐ */
+    overflow-x: hidden;
 }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 
 a { text-decoration: none; color: inherit; transition: 0.3s; }
 ul { list-style: none; padding: 0; margin: 0; }
@@ -175,10 +182,10 @@ footer { background-color: #333; color: #ccc; text-align: center; padding: 20px;
 .page-top-btn.show { opacity: 1; visibility: visible; }
 .page-top-btn:hover { background-color: var(--main-blue); }
 
-
 @media (max-width: 1024px) {
     .site-header {
-        padding: 0 20px;
+        /* ★変更：スマホ表示時のヘッダーの左右の余白を狭くして、ボタンを右に寄せる */
+        padding: 0 10px;
         justify-content: space-between;
     }
     
