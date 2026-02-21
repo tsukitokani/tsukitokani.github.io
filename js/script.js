@@ -8,7 +8,7 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
-/* --- 1. ニュース読み込み（修正版） --- */
+/* --- 1. ニュース読み込み --- */
 async function loadNews() {
     const list = document.getElementById('js-news-list');
     if (!list) return;
@@ -21,13 +21,10 @@ async function loadNews() {
         rows.forEach(row => {
             const cols = row.split('\t');
             if (cols.length < 3) return;
-            
-            // A列:日付, B列:タグ, C列:タイトル, D列:リンク
             const date = cols[0] || '';
-            const tag = cols[1] || 'お知らせ'; // 空欄なら「お知らせ」
+            const tag = cols[1] || 'お知らせ';
             const title = cols[2] || 'タイトルなし';
-            const link = cols[3]?.trim(); // リンクURL
-
+            const link = cols[3]?.trim();
             html += `
             <li>
                 <span class="news-date">${date}</span>
@@ -181,7 +178,6 @@ window.toggleAccordion = function(el) {
 document.addEventListener('DOMContentLoaded', () => {
     loadNews(); loadNextStage(); loadPastStages(); loadMembers(); loadExternal(); setupModal();
 
-    // ハンバーガーメニュー制御
     const hamBtn = document.getElementById('js-hamburger');
     const nav = document.getElementById('js-nav');
     if(hamBtn && nav) {
@@ -197,7 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // トップへ戻るボタン制御
     const topBtn = document.getElementById('page-top-btn');
     if(topBtn) {
         window.addEventListener('scroll', () => {

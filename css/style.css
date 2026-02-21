@@ -26,11 +26,7 @@ a { text-decoration: none; color: inherit; transition: 0.3s; }
 ul { list-style: none; padding: 0; margin: 0; }
 img { max-width: 100%; height: auto; }
 
-.container {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 0 20px;
-}
+.container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
 
 /* --- 3. 共通ヘッダー --- */
 .site-header {
@@ -41,20 +37,14 @@ img { max-width: 100%; height: auto; }
     color: white; font-weight: 800;
     position: sticky; top: 0; z-index: 1000;
 }
+.header-logo a { color: inherit; text-decoration: none; }
 .site-header nav ul { display: flex; gap: 20px; }
-.site-header nav a:hover,
-.site-header nav a.active { border-bottom: 2px solid white; }
+.site-header nav a:hover, .site-header nav a.active { border-bottom: 2px solid white; }
 
-/* ハンバーガーボタン（PCでは非表示） */
+/* ハンバーガーボタン（PC非表示） */
 .hamburger-btn {
-    display: none;
-    background: none;
-    border: none;
-    cursor: pointer;
-    width: 30px;
-    height: 24px;
-    position: relative;
-    z-index: 2000;
+    display: none; background: none; border: none; cursor: pointer;
+    width: 30px; height: 24px; position: relative; z-index: 2000;
 }
 .hamburger-btn span {
     position: absolute; left: 0; width: 100%; height: 3px;
@@ -63,23 +53,18 @@ img { max-width: 100%; height: auto; }
 .hamburger-btn span:nth-of-type(1) { top: 0; }
 .hamburger-btn span:nth-of-type(2) { top: 50%; transform: translateY(-50%); }
 .hamburger-btn span:nth-of-type(3) { bottom: 0; }
-
 .hamburger-btn.active span:nth-of-type(1) { top: 50%; transform: translateY(-50%) rotate(45deg); }
 .hamburger-btn.active span:nth-of-type(2) { opacity: 0; }
 .hamburger-btn.active span:nth-of-type(3) { top: 50%; transform: translateY(-50%) rotate(-45deg); }
 
-
 /* --- 4. ページ見出し帯 --- */
 .page-header-bar {
-    background-color: var(--main-blue);
-    color: white;
-    text-align: center;
-    padding: 50px 20px;
-    margin-bottom: 40px;
+    background-color: var(--main-blue); color: white; text-align: center;
+    padding: 50px 20px; margin-bottom: 40px;
 }
 .page-header-bar h1 { margin: 0; font-size: 2.2rem; letter-spacing: 0.1em; }
 
-/* --- 5. ヒーローセクション（左右色分け） --- */
+/* --- 5. ヒーローセクション（ホーム上部） --- */
 .hero-section { display: flex; min-height: 500px; }
 .hero-left {
     width: 50%; display: flex; align-items: center; padding-left: 8%;
@@ -106,6 +91,8 @@ img { max-width: 100%; height: auto; }
     background: white; color: var(--main-yellow); padding: 2px 10px; border-radius: 4px;
     font-weight: 800; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0;
 }
+.news-link { color: inherit; text-decoration: none; border-bottom: 1px dotted rgba(255,255,255,0.5); transition: 0.3s; }
+.news-link:hover { opacity: 0.7; }
 
 /* --- 7. コンテンツ用スタイル --- */
 .accordion-container { background-color: var(--main-blue); margin-top: 20px; }
@@ -135,37 +122,26 @@ footer { background-color: #333; color: #ccc; text-align: center; padding: 20px;
 .stage-image-container { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; align-items: flex-start; }
 .stage-image-container img { max-width: 45%; height: auto; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: zoom-in; }
 
-/* ★追加・修正：トップへ戻るボタン（矢印） */
+/* --- 8. トップへ戻るボタン --- */
 .page-top-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background-color: var(--main-yellow);
-    color: white;
-    width: 50px; height: 50px;
-    border-radius: 50%;
+    position: fixed; bottom: 20px; right: 20px;
+    background-color: var(--main-yellow); color: white;
+    width: 50px; height: 50px; border-radius: 50%;
     display: flex; justify-content: center; align-items: center;
-    font-weight: bold;
-    font-size: 1.5rem; /* 矢印を大きく */
-    padding-bottom: 4px; /* 矢印の上下位置微調整 */
+    font-weight: bold; font-size: 1.5rem; padding-bottom: 4px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    opacity: 0; visibility: hidden; transition: 0.3s;
-    z-index: 900;
+    opacity: 0; visibility: hidden; transition: 0.3s; z-index: 900;
 }
 .page-top-btn.show { opacity: 1; visibility: visible; }
 .page-top-btn:hover { background-color: var(--main-blue); }
 
-/* --- スマホ対応（レスポンシブ） --- */
+/* --- 9. スマホ対応（レスポンシブ） --- */
 @media (max-width: 768px) {
     .site-header { padding: 0 20px; }
-    
-    /* スマホではハンバーガーを表示 */
     .hamburger-btn { display: block; }
-
-    /* メニューは隠して全画面表示に */
     .site-header nav {
         position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-        background-color: rgba(242, 184, 66, 0.98); /* 透過を少し減らして背景を見えなくする */
+        background-color: rgba(242, 184, 66, 0.98);
         display: flex; justify-content: center; align-items: center;
         opacity: 0; visibility: hidden; transition: 0.3s; z-index: 1500;
     }
@@ -179,15 +155,4 @@ footer { background-color: #333; color: #ccc; text-align: center; padding: 20px;
     .news-list li { font-size: 0.9rem; }
     .news-tag { font-size: 0.7rem; padding: 2px 6px; }
     .stage-image-container img { max-width: 100%; }
-}
-
-/* NEWS内のリンクスタイル */
-.news-link {
-    text-decoration: none;
-    border-bottom: 1px dotted #ccc;
-    transition: 0.3s;
-}
-.news-link:hover {
-    color: var(--hero-blue);
-    border-bottom: 1px solid var(--hero-blue);
 }
