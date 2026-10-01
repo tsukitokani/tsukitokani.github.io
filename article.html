@@ -1,42 +1,55 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>お知らせ | 愛知淑徳大学演劇研究会 月とカニ</title>
-    <link rel="icon" href="images/tsukikanilogo.png">
-    <link rel="apple-touch-icon" href="images/tsukikanilogo.png">
-    <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お知らせ | 愛知淑徳大学演劇研究会「月とカニ」</title>
+  
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    #js-article-content, 
+    #js-article-content div, 
+    #js-article-content p, 
+    #js-article-content span {
+      white-space: pre-wrap !important;
+    }
+  </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="header-logo"><a href="index.html">愛知淑徳大学演劇研究会「月とカニ」</a></div>
-        <button class="hamburger-btn" id="js-hamburger">
-            <span></span><span></span><span></span>
-        </button>
-        <nav id="js-nav">
-            <ul>
-                <li><a href="index.html">ホーム</a></li>
-                <li><a href="next-stage.html">次回公演</a></li>
-                <li><a href="past.html">過去公演</a></li>
-                <li><a href="about.html">劇団紹介</a></li>
-                <li><a href="external.html">外部参加情報</a></li>
-                <li><a href="contact.html">お問い合わせ</a></li>
-            </ul>
-        </nav>
-    </header>
 
-    <main class="container" style="padding: 60px 20px; max-width: 800px; min-height: 60vh;">
-        <article id="js-article-content">
-            <div style="text-align: center;">読み込み中...</div>
-        </article>
-    </main>
+  <header>
+    <div style="background: #f2b842; color: #fff; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
+      <h1 style="margin: 0; font-size: 1.2rem;">
+        <a href="index.html" style="color: #fff; text-decoration: none;">愛知淑徳大学演劇研究会「月とカニ」</a>
+      </h1>
+      <nav id="js-nav">
+        <ul style="list-style: none; display: flex; gap: 20px; margin: 0; padding: 0; font-weight: bold; font-size: 0.9rem;">
+          <li><a href="index.html" style="color: #fff; text-decoration: none;">ホーム</a></li>
+          <li><a href="next.html" style="color: #fff; text-decoration: none;">次回公演</a></li>
+          <li><a href="past.html" style="color: #fff; text-decoration: none;">過去公演</a></li>
+          <li><a href="member.html" style="color: #fff; text-decoration: none;">劇団紹介</a></li>
+          <li><a href="external.html" style="color: #fff; text-decoration: none;">外部参加情報</a></li>
+          <li><a href="contact.html" style="color: #fff; text-decoration: none;">お問い合わせ</a></li>
+        </ul>
+      </nav>
+      <button id="js-hamburger" style="display: none;">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
 
-    <footer>
-        <p class="copyright">© 2026 tsukitokani Corporation.</p>
-    </footer>
+  <main style="max-width: 800px; margin: 50px auto; padding: 0 20px; min-height: 60vh;">
+    <div id="js-article-content">
+      <p style="text-align: center; color: #999; padding: 50px 0;">読み込み中...</p>
+    </div>
+  </main>
 
-    <script src="js/script.js?v=1"></script>
+  <footer style="background: #333; color: #aaa; text-align: center; padding: 25px 0; margin-top: 40px; font-size: 0.8rem;">
+    &copy; 2026 tsukitokani Corporation.
+  </footer>
+
+  <script src="js/script.js?v=9999"></script>
+
 </body>
 </html>
