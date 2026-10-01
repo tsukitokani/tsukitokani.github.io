@@ -254,7 +254,7 @@ async function loadExternal() {
             ${link && link.trim() !== '#' && link.trim() !== '' ? `<a href="${link}" target="_blank" style="color:var(--main-yellow); font-weight:800;">詳細へ →</a>` : ''}
         </div>`;
     });
-    container.innerHTML = html;
+    container.innerHTML = html || '<p style="text-align:center; padding: 40px 0; color:#666; font-size:1rem;">現在、外部参加情報はありません。</p>';
 }
 
 function setupModal() {
