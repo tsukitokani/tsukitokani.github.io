@@ -6,6 +6,43 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
+// TSVのセル内改行を正しく保持して2次元配列に分割するパーサー
+function parseTSV(text) {
+    const rows = [];
+    let currentRow = [];
+    let currentCell = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (c === '"') {
+            if (inQuotes && text[i + 1] === '"') {
+                currentCell += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (c === '\t' && !inQuotes) {
+            currentRow.push(currentCell);
+            currentCell = '';
+        } else if ((c === '\r' || c === '\n') && !inQuotes) {
+            if (c === '\r' && text[i + 1] === '\n') {
+                i++;
+            }
+            currentRow.push(currentCell);
+            rows.push(currentRow);
+            currentRow = [];
+            currentCell = '';
+        } else {
+            currentCell += c;
+        }
+    }
+    if (currentCell !== '' || currentRow.length > 0) {
+        currentRow.push(currentCell);
+        rows.push(currentRow);
+    }
+    return rows;
+}
+
 async function loadNews() {
     const list = document.getElementById('js-news-list');
     const pageList = document.getElementById('js-news-page-list');
@@ -14,8 +51,9 @@ async function loadNews() {
 
     const res = await fetch(`${BASE_URL}gid=0&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
+    const parsedRows = parseTSV(text).slice(1);
 
-    let rows = text.split('\n').slice(1).map((row, index) => ({ data: row.split('\t'), id: index })).reverse();
+    let rows = parsedRows.map((cols, index) => ({ data: cols, id: index })).reverse();
     rows = rows.filter(item => item.data[0] === '公開');
 
     if (list) { rows = rows.slice(0, 5); }
@@ -72,9 +110,9 @@ async function loadArticle() {
 
     const res = await fetch(`${BASE_URL}gid=0&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const rows = text.split('\n').slice(1);
+    const rows = parseTSV(text).slice(1);
 
-    const cols = rows[articleId]?.split('\t');
+    const cols = rows[articleId];
     if (!cols || cols[0] !== '公開') return;
 
     const date = cols[1] || '';
@@ -109,7 +147,8 @@ async function loadNextStage() {
     
     const res = await fetch(`${BASE_URL}gid=2122620919&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const cols = text.split('\n')[1].split('\t');
+    const rows = parseTSV(text);
+    const cols = rows[1];
     
     if (cols && cols[0] === '公開') {
         const groupName = cols[1] || '愛知淑徳大学演劇研究会「月とカニ」';
@@ -182,10 +221,9 @@ async function loadPastStages() {
     if (!container) return;
     const res = await fetch(`${BASE_URL}gid=1827377121&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const rows = text.split('\n').slice(1).reverse();
+    const rows = parseTSV(text).slice(1).reverse();
     let html = '';
-    rows.forEach(row => {
-        const cols = row.split('\t');
+    rows.forEach(cols => {
         if (cols.length < 3 || cols[0] !== '公開') return;
         const img1 = formatImg(cols[7]);
         const img2 = formatImg(cols[8]);
@@ -205,10 +243,9 @@ async function loadMembers() {
     if (!container) return;
     const res = await fetch(`${BASE_URL}gid=900532729&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const rows = text.split('\n').slice(1);
+    const rows = parseTSV(text).slice(1);
     const groups = {};
-    rows.forEach(row => {
-        const cols = row.split('\t');
+    rows.forEach(cols => {
         if (cols.length < 3 || cols[0] !== '公開') return;
         const term = cols[1].trim();
         if (!groups[term]) groups[term] = [];
@@ -230,10 +267,9 @@ async function loadExternal() {
     if (!container) return;
     const res = await fetch(`${BASE_URL}gid=1726086050&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const rows = text.split('\n').slice(1).reverse();
+    const rows = parseTSV(text).slice(1).reverse();
     let html = '';
-    rows.forEach(row => {
-        const cols = row.split('\t');
+    rows.forEach(cols => {
         if (cols.length < 3 || cols[0] !== '公開') return;
         const title = cols[1] || '';
         const date = cols[2] || '';
