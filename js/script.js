@@ -117,8 +117,7 @@ async function loadNextStage() {
         
         const date = cols[3]?.trim() || '';
         const place = cols[4]?.trim() || '';
-        
-        const scriptText = cols[5]?.trim() || '';
+        const script = cols[5]?.trim() || '';
         const img1 = formatImg(cols[6]);
         const img2 = formatImg(cols[7]);
         const reserveUrl = cols[8]?.trim() || '';
@@ -136,21 +135,13 @@ async function loadNextStage() {
         }
         
         let infoHtml = '';
-        if (scriptText) infoHtml += `<div style="display: flex; margin-bottom: 8px; align-items: baseline;"><div style="color: #555; font-weight: bold; flex-shrink: 0; width: 3em;">脚本</div><div style="color: #555;">：</div><div style="margin-left: 8px;">${scriptText}</div></div>`;
-        if (date) infoHtml += `<div style="display: flex; margin-bottom: 8px; align-items: baseline;"><div style="color: #555; font-weight: bold; flex-shrink: 0; width: 3em;">日時</div><div style="color: #555;">：</div><div style="margin-left: 8px;">${date}</div></div>`;
-        if (place) infoHtml += `<div style="display: flex; margin-bottom: 8px; align-items: baseline;"><div style="color: #555; font-weight: bold; flex-shrink: 0; width: 3em;">会場</div><div style="color: #555;">：</div><div style="margin-left: 8px;">${place}</div></div>`;
-        if (price) infoHtml += `<div style="display: flex; margin-bottom: 8px; align-items: baseline;"><div style="color: #555; font-weight: bold; flex-shrink: 0; width: 3em;">料金</div><div style="color: #555;">：</div><div style="margin-left: 8px;">${price}</div></div>`;
+        if (date) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap;"><b>日時：</b>${date}</div>`;
+        if (place) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap;"><b>会場：</b>${place}</div>`;
+        if (script) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap;"><b>脚本：</b>${script}</div>`;
+        if (price) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap;"><b>料金：</b>${price}</div>`;
         
         if (reserveUrl && reserveUrl.startsWith('http')) {
-            infoHtml += `<div style="display: flex; margin-bottom: 8px; align-items: center; margin-top: 20px;">
-                <div style="color: #555; font-weight: bold; flex-shrink: 0; width: 3em;">予約</div>
-                <div style="color: #555;">：</div>
-                <div style="margin-left: 8px;">
-                    <a href="${reserveUrl}" target="_blank" style="display: inline-block; padding: 8px 24px; background-color: var(--main-yellow); color: white; font-weight: 800; border-radius: 30px; text-decoration: none; box-shadow: 0 2px 6px rgba(0,0,0,0.15); transition: 0.2s;">
-                        こちらから
-                    </a>
-                </div>
-            </div>`;
+            infoHtml += `<div style="margin-bottom: 8px;"><b>予約：</b><a href="${reserveUrl}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a></div>`;
         }
         
         let contentHtml = '';
@@ -158,47 +149,22 @@ async function loadNextStage() {
             contentHtml += `<div style="font-size: 1.05rem; line-height: 1.6;">${infoHtml}</div>`;
         }
         
-        const parseTextToGrid = (text) => {
-            if (!text) return '';
-            const lines = text.split(/(?:<br\s*\/?>|[\r\n])+/i);
-            let html = '<div style="display: grid; grid-template-columns: max-content max-content 1fr; gap: 6px 8px; align-items: baseline;">';
-            lines.forEach(line => {
-                if (!line.trim()) return;
-                const parts = line.split(/[：:]/);
-                if (parts.length >= 2) {
-                    const role = parts.shift().trim();
-                    const name = parts.join('：').trim();
-                    html += `<div style="color: #555; font-weight: 600;">${role}</div><div style="color: #555;">：</div><div style="line-height: 1.6;">${name}</div>`;
-                } else {
-                    html += `<div style="grid-column: 1 / -1; line-height: 1.6;">${line}</div>`;
-                }
-            });
-            html += '</div>';
-            return html;
-        };
-
         if (castText || staffText) {
             if (infoHtml) {
-                contentHtml += `<hr style="border: 0; border-top: 1px dashed #ccc; margin: 30px 0;">`;
+                contentHtml += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 25px 0;">`;
             }
             if (castText) {
-                contentHtml += `<div style="margin-bottom: 30px; line-height: 1.7;">
-                    <b style="font-size: 1.2rem; color: var(--main-blue); display: block; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 5px;">役者</b>
-                    ${parseTextToGrid(castText)}
-                </div>`;
+                contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div style="white-space: pre-wrap; padding-left: 2px;">${castText}</div></div>`;
             }
             if (staffText) {
-                contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;">
-                    <b style="font-size: 1.2rem; color: var(--main-blue); display: block; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 5px;">スタッフ</b>
-                    ${parseTextToGrid(staffText)}
-                </div>`;
+                contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div style="white-space: pre-wrap; padding-left: 2px;">${staffText}</div></div>`;
             }
         }
         
         if (titleText || imgHtml || contentHtml) {
             container.innerHTML = `
-                <h2 style="color:var(--hero-blue); font-size: 1.8rem; line-height: 1.4; margin-bottom: 5px; text-align: center;">${groupName}${titleText ? `<br class="sp-only">${titleText}` : ''}</h2>
-                <div style="background:#ffffff; padding:40px; border-radius:12px; margin-top:30px; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 800px; margin-left: auto; margin-right: auto;">
+                <h2 style="color:var(--hero-blue); font-size: 1.8rem; line-height: 1.4; margin-bottom: 5px;">${groupName}${titleText ? `<br class="sp-only">${titleText}` : ''}</h2>
+                <div style="background:#f9f9f9; padding:35px 30px; border-radius:10px; margin-top:20px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
                     ${imgHtml}
                     ${contentHtml}
                 </div>`;
