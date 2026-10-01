@@ -6,7 +6,7 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
-// TSVのセル内改行を正しく保持して2次元配列に分割するパーサー
+// TSVのセル内改行を保持して2次元配列に分割するパーサー
 function parseTSV(text) {
     const rows = [];
     let currentRow = [];
@@ -41,6 +41,12 @@ function parseTSV(text) {
         rows.push(currentRow);
     }
     return rows;
+}
+
+// 改行文字を <br> タグに置換する共通関数
+function toBr(text) {
+    if (!text) return '';
+    return text.replace(/\r?\n/g, '<br>');
 }
 
 async function loadNews() {
@@ -118,7 +124,7 @@ async function loadArticle() {
     const date = cols[1] || '';
     const tag = cols[2] || '';
     const title = cols[3] || '';
-    const content = cols[4] || '';
+    const content = toBr(cols[4] || '');
     const imgUrl = formatImg(cols[5]);
 
     let imgHtml = '';
@@ -133,7 +139,7 @@ async function loadArticle() {
             <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${title}</h2>
         </div>
         ${imgHtml}
-        <div style="line-height: 1.8; font-size: 1.1rem; white-space: pre-wrap;">${content}</div>
+        <div style="line-height: 2.0; font-size: 1.1rem;">${content}</div>
         <div style="text-align: center; margin-top: 50px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
             <a href="index.html" style="display:inline-block; padding: 10px 30px; background:var(--main-blue); color:white; border-radius:30px; font-weight:bold;">← ホームに戻る</a>
             <a href="news.html" style="display:inline-block; padding: 10px 30px; background:var(--main-yellow); color:white; border-radius:30px; font-weight:bold;">一覧を見る</a>
@@ -154,15 +160,15 @@ async function loadNextStage() {
         const groupName = cols[1] || '愛知淑徳大学演劇研究会「月とカニ」';
         const titleText = cols[2]?.trim() ? `『${cols[2]}』` : '';
         
-        const date = cols[3]?.trim() || '';
-        const place = cols[4]?.trim() || '';
-        const script = cols[5]?.trim() || '';
+        const date = toBr(cols[3]?.trim() || '');
+        const place = toBr(cols[4]?.trim() || '');
+        const script = toBr(cols[5]?.trim() || '');
         const img1 = formatImg(cols[6]);
         const img2 = formatImg(cols[7]);
         const reserveUrl = cols[8]?.trim() || '';
-        const castText = cols[9]?.trim() || '';
-        const staffText = cols[10]?.trim() || '';
-        const price = cols[11]?.trim() || '';
+        const castText = toBr(cols[9]?.trim() || '');
+        const staffText = toBr(cols[10]?.trim() || '');
+        const price = toBr(cols[11]?.trim() || '');
         
         let imgHtml = '';
         if (img1 || img2) {
@@ -174,10 +180,10 @@ async function loadNextStage() {
         }
         
         let infoHtml = '';
-        if (date) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap;"><b>日時：</b>${date}</div>`;
-        if (place) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap;"><b>会場：</b>${place}</div>`;
-        if (script) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap;"><b>脚本：</b>${script}</div>`;
-        if (price) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap;"><b>料金：</b>${price}</div>`;
+        if (date) infoHtml += `<div style="margin-bottom: 8px;"><b>日時：</b>${date}</div>`;
+        if (place) infoHtml += `<div style="margin-bottom: 8px;"><b>会場：</b>${place}</div>`;
+        if (script) infoHtml += `<div style="margin-bottom: 8px;"><b>脚本：</b>${script}</div>`;
+        if (price) infoHtml += `<div style="margin-bottom: 8px;"><b>料金：</b>${price}</div>`;
         
         if (reserveUrl && reserveUrl.startsWith('http')) {
             infoHtml += `<div style="margin-bottom: 8px;"><b>予約：</b><a href="${reserveUrl}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a></div>`;
@@ -185,7 +191,7 @@ async function loadNextStage() {
         
         let contentHtml = '';
         if (infoHtml) {
-            contentHtml += `<div style="font-size: 1.05rem; line-height: 1.6;">${infoHtml}</div>`;
+            contentHtml += `<div style="font-size: 1.05rem; line-height: 1.8;">${infoHtml}</div>`;
         }
         
         if (castText || staffText) {
@@ -193,10 +199,10 @@ async function loadNextStage() {
                 contentHtml += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 25px 0;">`;
             }
             if (castText) {
-                contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div style="white-space: pre-wrap; padding-left: 2px;">${castText}</div></div>`;
+                contentHtml += `<div style="margin-bottom: 25px; line-height: 1.8;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div style="padding-left: 2px;">${castText}</div></div>`;
             }
             if (staffText) {
-                contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div style="white-space: pre-wrap; padding-left: 2px;">${staffText}</div></div>`;
+                contentHtml += `<div style="margin-bottom: 0; line-height: 1.8;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div style="padding-left: 2px;">${staffText}</div></div>`;
             }
         }
         
@@ -274,7 +280,7 @@ async function loadExternal() {
         const title = cols[1] || '';
         const date = cols[2] || '';
         const place = cols[3] || '';
-        const detail = cols[4] || '';
+        const detail = toBr(cols[4] || '');
         const img1 = formatImg(cols[5]);
         const img2 = formatImg(cols[6]);
         const link = cols[7];
@@ -286,7 +292,7 @@ async function loadExternal() {
                 ${img2 ? `<img src="${img2}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:120px; cursor:zoom-in; border-radius:4px;">` : ''}
             </div>
             ${place ? `<p style="margin:0 0 10px 0; font-weight:800; color:#555;">会場：${place}</p>` : ''}
-            <p style="margin-bottom:15px; white-space:pre-wrap;">${detail}</p>
+            <p style="margin-bottom:15px; line-height:1.7;">${detail}</p>
             ${link && link.trim() !== '#' && link.trim() !== '' ? `<a href="${link}" target="_blank" style="color:var(--main-yellow); font-weight:800;">詳細へ →</a>` : ''}
         </div>`;
     });
