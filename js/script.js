@@ -6,43 +6,6 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
-// TSVのセル内改行を正しく保持して2次元配列に分割するパーサー
-function parseTSV(text) {
-    const rows = [];
-    let currentRow = [];
-    let currentCell = '';
-    let inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
-        const c = text[i];
-        if (c === '"') {
-            if (inQuotes && text[i + 1] === '"') {
-                currentCell += '"';
-                i++;
-            } else {
-                inQuotes = !inQuotes;
-            }
-        } else if (c === '\t' && !inQuotes) {
-            currentRow.push(currentCell);
-            currentCell = '';
-        } else if ((c === '\r' || c === '\n') && !inQuotes) {
-            if (c === '\r' && text[i + 1] === '\n') {
-                i++;
-            }
-            currentRow.push(currentCell);
-            rows.push(currentRow);
-            currentRow = [];
-            currentCell = '';
-        } else {
-            currentCell += c;
-        }
-    }
-    if (currentCell !== '' || currentRow.length > 0) {
-        currentRow.push(currentCell);
-        rows.push(currentRow);
-    }
-    return rows;
-}
-
 async function loadNews() {
     const list = document.getElementById('js-news-list');
     const pageList = document.getElementById('js-news-page-list');
@@ -51,9 +14,8 @@ async function loadNews() {
 
     const res = await fetch(`${BASE_URL}gid=0&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const parsedRows = parseTSV(text).slice(1);
 
-    let rows = parsedRows.map((cols, index) => ({ data: cols, id: index })).reverse();
+    let rows = text.split('\n').slice(1).map((row, index) => ({ data: row.split('\t'), id: index })).reverse();
     rows = rows.filter(item => item.data[0] === '公開');
 
     if (list) { rows = rows.slice(0, 5); }
@@ -110,9 +72,9 @@ async function loadArticle() {
 
     const res = await fetch(`${BASE_URL}gid=0&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const rows = parseTSV(text).slice(1);
+    const rows = text.split('\n').slice(1);
 
-    const cols = rows[articleId];
+    const cols = rows[articleId]?.split('\t');
     if (!cols || cols[0] !== '公開') return;
 
     const date = cols[1] || '';
@@ -133,7 +95,7 @@ async function loadArticle() {
             <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${title}</h2>
         </div>
         ${imgHtml}
-        <div style="line-height: 1.8; font-size: 1.1rem; white-space: pre-wrap !important; word-break: break-word;">${content}</div>
+        <div style="line-height: 1.8; font-size: 1.1rem; white-space: pre-wrap;">${content}</div>
         <div style="text-align: center; margin-top: 50px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
             <a href="index.html" style="display:inline-block; padding: 10px 30px; background:var(--main-blue); color:white; border-radius:30px; font-weight:bold;">← ホームに戻る</a>
             <a href="news.html" style="display:inline-block; padding: 10px 30px; background:var(--main-yellow); color:white; border-radius:30px; font-weight:bold;">一覧を見る</a>
@@ -147,8 +109,7 @@ async function loadNextStage() {
     
     const res = await fetch(`${BASE_URL}gid=2122620919&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const rows = parseTSV(text);
-    const cols = rows[1];
+    const cols = text.split('\n')[1].split('\t');
     
     if (cols && cols[0] === '公開') {
         const groupName = cols[1] || '愛知淑徳大学演劇研究会「月とカニ」';
@@ -174,13 +135,13 @@ async function loadNextStage() {
         }
         
         let infoHtml = '';
-        if (date) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap !important;"><b>日時：</b>${date}</div>`;
-        if (place) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap !important;"><b>会場：</b>${place}</div>`;
-        if (script) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap !important;"><b>脚本：</b>${script}</div>`;
-        if (price) infoHtml += `<div style="margin-bottom: 8px; white-space: pre-wrap !important;"><b>料金：</b>${price}</div>`;
+        if (date) infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">日時：</b><span style="white-space: pre-wrap;">${date}</span></div>`;
+        if (place) infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">会場：</b><span style="white-space: pre-wrap;">${place}</span></div>`;
+        if (script) infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">脚本：</b><span style="white-space: pre-wrap;">${script}</span></div>`;
+        if (price) infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">料金：</b><span style="white-space: pre-wrap;">${price}</span></div>`;
         
         if (reserveUrl && reserveUrl.startsWith('http')) {
-            infoHtml += `<div style="margin-bottom: 8px;"><b>予約：</b><a href="${reserveUrl}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a></div>`;
+            infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">予約：</b><span><a href="${reserveUrl}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a></span></div>`;
         }
         
         let contentHtml = '';
@@ -193,10 +154,10 @@ async function loadNextStage() {
                 contentHtml += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 25px 0;">`;
             }
             if (castText) {
-                contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div style="white-space: pre-wrap !important; padding-left: 2px;">${castText}</div></div>`;
+                contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div style="white-space: pre-wrap; padding-left: 2px;">${castText}</div></div>`;
             }
             if (staffText) {
-                contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div style="white-space: pre-wrap !important; padding-left: 2px;">${staffText}</div></div>`;
+                contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div style="white-space: pre-wrap; padding-left: 2px;">${staffText}</div></div>`;
             }
         }
         
@@ -221,9 +182,10 @@ async function loadPastStages() {
     if (!container) return;
     const res = await fetch(`${BASE_URL}gid=1827377121&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const rows = parseTSV(text).slice(1).reverse();
+    const rows = text.split('\n').slice(1).reverse();
     let html = '';
-    rows.forEach(cols => {
+    rows.forEach(row => {
+        const cols = row.split('\t');
         if (cols.length < 3 || cols[0] !== '公開') return;
         const img1 = formatImg(cols[7]);
         const img2 = formatImg(cols[8]);
@@ -243,9 +205,10 @@ async function loadMembers() {
     if (!container) return;
     const res = await fetch(`${BASE_URL}gid=900532729&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const rows = parseTSV(text).slice(1);
+    const rows = text.split('\n').slice(1);
     const groups = {};
-    rows.forEach(cols => {
+    rows.forEach(row => {
+        const cols = row.split('\t');
         if (cols.length < 3 || cols[0] !== '公開') return;
         const term = cols[1].trim();
         if (!groups[term]) groups[term] = [];
@@ -267,9 +230,10 @@ async function loadExternal() {
     if (!container) return;
     const res = await fetch(`${BASE_URL}gid=1726086050&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const rows = parseTSV(text).slice(1).reverse();
+    const rows = text.split('\n').slice(1).reverse();
     let html = '';
-    rows.forEach(cols => {
+    rows.forEach(row => {
+        const cols = row.split('\t');
         if (cols.length < 3 || cols[0] !== '公開') return;
         const title = cols[1] || '';
         const date = cols[2] || '';
@@ -286,7 +250,7 @@ async function loadExternal() {
                 ${img2 ? `<img src="${img2}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:120px; cursor:zoom-in; border-radius:4px;">` : ''}
             </div>
             ${place ? `<p style="margin:0 0 10px 0; font-weight:800; color:#555;">会場：${place}</p>` : ''}
-            <p style="margin-bottom:15px; white-space: pre-wrap !important;">${detail}</p>
+            <p style="margin-bottom:15px; white-space:pre-wrap;">${detail}</p>
             ${link && link.trim() !== '#' && link.trim() !== '' ? `<a href="${link}" target="_blank" style="color:var(--main-yellow); font-weight:800;">詳細へ →</a>` : ''}
         </div>`;
     });
