@@ -16,7 +16,15 @@ async function loadNews() {
     const text = await res.text();
 
     let rows = text.split('\n').slice(1).map((row, index) => ({ data: row.split('\t'), id: index })).reverse();
-    rows = rows.filter(item => item.data[0] === '公開');
+    // 公開およびピン留めの両方を対象にする
+    rows = rows.filter(item => item.data[0] === '公開' || (item.data[0] && item.data[0].includes('ピン留め')));
+
+    // ピン留めを最上位にする
+    rows.sort((a, b) => {
+        const aPin = a.data[0] && a.data[0].includes('ピン留め') ? 1 : 0;
+        const bPin = b.data[0] && b.data[0].includes('ピン留め') ? 1 : 0;
+        return bPin - aPin;
+    });
 
     if (list) { rows = rows.slice(0, 5); }
 
@@ -24,6 +32,7 @@ async function loadNews() {
     rows.forEach(item => {
         const cols = item.data;
         if (cols.length < 4) return;
+        const isPin = cols[0] && cols[0].includes('ピン留め');
         const date = cols[1] || '';
         const tag = cols[2] || '';
         const title = cols[3] || '';
@@ -38,6 +47,7 @@ async function loadNews() {
 
         const colorStyle = pageList ? 'style="color:#333; border-bottom:1px solid #ddd;"' : '';
         const tagStyle = pageList ? 'style="background:var(--main-yellow); color:white;"' : '';
+        const pinIcon = isPin ? '📌 ' : '';
 
         if (linkUrl) {
             html += `
@@ -45,7 +55,7 @@ async function loadNews() {
                 <a href="${linkUrl}" ${colorStyle} ${linkUrl.startsWith('http') ? 'target="_blank"' : ''}>
                     <span class="news-date">${date}</span>
                     <span class="news-tag" ${tagStyle}>${tag}</span>
-                    <span class="news-title">${title}</span>
+                    <span class="news-title">${pinIcon}${title}</span>
                 </a>
             </li>`;
         } else {
@@ -54,7 +64,7 @@ async function loadNews() {
                 <div class="news-content" ${colorStyle}>
                     <span class="news-date">${date}</span>
                     <span class="news-tag" ${tagStyle}>${tag}</span>
-                    <span class="news-title">${title}</span>
+                    <span class="news-title">${pinIcon}${title}</span>
                 </div>
             </li>`;
         }
@@ -75,24 +85,30 @@ async function loadArticle() {
     const rows = text.split('\n').slice(1);
 
     const cols = rows[articleId]?.split('\t');
-    if (!cols || cols[0] !== '公開') return;
+    if (!cols || (cols[0] !== '公開' && !cols[0]?.includes('ピン留め'))) return;
 
+    const isPin = cols[0]?.includes('ピン留め');
     const date = cols[1] || '';
     const tag = cols[2] || '';
     const title = cols[3] || '';
     const content = cols[4] || '';
-    const imgUrl = formatImg(cols[5]);
+    const imgUrl1 = formatImg(cols[5]);
+    const imgUrl2 = formatImg(cols[6]);
 
     let imgHtml = '';
-    if (imgUrl) {
-        imgHtml = `<div style="text-align:center; margin-bottom: 30px;"><img src="${imgUrl}" style="max-height:400px; border-radius:8px;" alt=""></div>`;
+    if (imgUrl1 || imgUrl2) {
+        imgHtml = `
+        <div style="display:flex; justify-content:center; gap:15px; flex-wrap:wrap; margin-bottom: 30px;">
+            ${imgUrl1 ? `<img src="${imgUrl1}" style="max-height:400px; border-radius:8px; object-fit:contain;" alt="">` : ''}
+            ${imgUrl2 ? `<img src="${imgUrl2}" style="max-height:400px; border-radius:8px; object-fit:contain;" alt="">` : ''}
+        </div>`;
     }
 
     container.innerHTML = `
         <div style="margin-bottom: 20px; border-bottom: 2px solid var(--main-yellow); padding-bottom: 15px;">
             <span class="news-tag" style="background:var(--main-yellow); color:white; display:inline-block; margin-bottom:10px; padding: 4px 12px; border-radius: 2px; font-weight: 800; font-size: 0.8rem;">${tag}</span>
             <span style="font-weight:bold; color:#666; margin-left:15px;">${date}</span>
-            <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${title}</h2>
+            <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${isPin ? '📌 ' : ''}${title}</h2>
         </div>
         ${imgHtml}
         <div style="line-height: 1.8; font-size: 1.1rem;">${content}</div>
@@ -124,6 +140,8 @@ async function loadNextStage() {
         const castText = cols[9]?.trim() || '';
         const staffText = cols[10]?.trim() || '';
         const price = cols[11]?.trim() || '';
+        const direction = cols[12]?.trim() || '';
+        const directionType = cols[13]?.trim() || '演出';
         
         let imgHtml = '';
         if (img1 || img2) {
@@ -142,7 +160,7 @@ async function loadNextStage() {
                 : val;
             return `
             <div style="display: table; width: 100%; margin-bottom: 8px;">
-                <b style="display: table-cell; width: 4.5em; vertical-align: top; white-space: nowrap;">${label}：</b>
+                <b style="display: table-cell; width: 6.5em; vertical-align: top; white-space: nowrap;">${label}：</b>
                 <div style="display: table-cell; vertical-align: top;">${content}</div>
             </div>`;
         };
@@ -150,6 +168,9 @@ async function loadNextStage() {
         infoHtml += makeRow('日時', date);
         infoHtml += makeRow('会場', place);
         infoHtml += makeRow('脚本', script);
+        if (direction) {
+            infoHtml += makeRow(directionType, direction);
+        }
         infoHtml += makeRow('料金', price);
         if (reserveUrl && reserveUrl.startsWith('http')) {
             infoHtml += makeRow('予約', reserveUrl, true);
@@ -195,17 +216,70 @@ async function loadPastStages() {
     const text = await res.text();
     const rows = text.split('\n').slice(1).reverse();
     let html = '';
+
+    // 日付フォーマット整形関数
+    const formatStageDate = (rawDate) => {
+        if (!rawDate) return '';
+        let clean = rawDate.replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim();
+        
+        if (clean.includes('年')) {
+            return clean;
+        }
+
+        const matches = clean.match(/(\d{1,2})\/(\d{1,2})/g);
+        if (matches && matches.length > 0) {
+            const currentYear = new Date().getFullYear();
+            if (matches.length === 1) {
+                const [m, d] = matches[0].split('/');
+                return `${currentYear}年${m}月${d}日`;
+            } else {
+                const [m1, d1] = matches[0].split('/');
+                const [m2, d2] = matches[matches.length - 1].split('/');
+                return `${currentYear}年${m1}月${d1}日~${m2}月${d2}日`;
+            }
+        }
+        return clean;
+    };
+
     rows.forEach(row => {
         const cols = row.split('\t');
         if (cols.length < 3 || cols[0] !== '公開') return;
+        
+        const period = cols[1] || '';
+        const title = cols[2] || '';
+        const rawDate = cols[3] || '';
+        const place = (cols[4] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim();
+        const script = cols[5]?.trim() || '';
+        const direction = cols[6]?.trim() || '';
         const img1 = formatImg(cols[7]);
         const img2 = formatImg(cols[8]);
-        html += `<div style="margin-bottom:50px; border-bottom:1px solid #ddd; padding-bottom:30px;">
-            <h3 style="color:var(--main-blue)">${cols[1]}『${cols[2]}』</h3><p>${cols[3]} @${cols[4]}</p>
-            <div style="display:flex; gap:10px; overflow-x:auto; margin-top:10px;">
-                ${img1 ? `<img src="${img1}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:150px; cursor:zoom-in;">` : ''}
-                ${img2 ? `<img src="${img2}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:150px; cursor:zoom-in;">` : ''}
-            </div></div>`;
+
+        const displayDate = formatStageDate(rawDate);
+
+        // 脚本・演出（潤色対応）の組み立て
+        let staffInfo = [];
+        if (script) staffInfo.push(`脚本：${script}`);
+        if (direction) {
+            let dirText = direction;
+            if (!direction.startsWith('演出') && !direction.startsWith('潤色')) {
+                dirText = `演出：${direction}`;
+            }
+            staffInfo.push(dirText);
+        }
+        const staffHtml = staffInfo.length > 0 
+            ? `<p style="margin: 4px 0 0 0; color: #555; font-size: 0.95rem;">${staffInfo.join(' / ')}</p>` 
+            : '';
+
+        html += `
+        <div style="margin-bottom:50px; border-bottom:1px solid #ddd; padding-bottom:30px;">
+            <h3 style="color:var(--main-blue); margin-bottom: 6px;">${period}『${title}』</h3>
+            <p style="margin: 0; color: #444;">${displayDate}${place ? ` @${place}` : ''}</p>
+            ${staffHtml}
+            <div style="display:flex; gap:10px; overflow-x:auto; margin-top:12px;">
+                ${img1 ? `<img src="${img1}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:150px; cursor:zoom-in; border-radius: 4px;">` : ''}
+                ${img2 ? `<img src="${img2}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:150px; cursor:zoom-in; border-radius: 4px;">` : ''}
+            </div>
+        </div>`;
     });
     container.innerHTML = html;
     setupModal();
@@ -248,7 +322,7 @@ async function loadExternal() {
         if (cols.length < 3 || cols[0] !== '公開') return;
         const title = cols[1] || '';
         const date = cols[2] || '';
-        const place = cols[3] || '';
+        const place = (cols[3] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim();
         const detail = cols[4] || '';
         const img1 = formatImg(cols[5]);
         const img2 = formatImg(cols[6]);
