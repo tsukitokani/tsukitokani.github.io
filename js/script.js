@@ -46,6 +46,7 @@ function parseTSV(text) {
 // 改行や既存の <br> を綺麗にHTMLの改行に変換する関数
 function convertNewlines(text) {
     if (!text) return '';
+    // すでに <br> が入っている場合はそのまま、普通の改行は <br> に変換
     if (text.includes('<br>')) {
         return text;
     }
@@ -83,30 +84,27 @@ async function loadNews() {
             linkUrl = `article.html?id=${item.id}`;
         }
 
-        const liStyle = 'padding: 15px 0; border-bottom: 1px solid #eee;';
-        const dateStyle = 'color: #666; font-size: 0.9rem; margin-right: 15px; font-weight: bold;';
-        const tagStyle = 'background: #f2b842; color: white; padding: 3px 10px; border-radius: 3px; font-size: 0.8rem; margin-right: 15px; font-weight: bold; display: inline-block;';
-        const titleStyle = 'color: #333; font-weight: bold; font-size: 1.05rem; text-decoration: none;';
-
         if (linkUrl) {
             html += `
-            <li style="${liStyle}">
-                <a href="${linkUrl}" style="text-decoration: none; display: flex; flex-wrap: wrap; align-items: center;" ${linkUrl.startsWith('http') ? 'target="_blank"' : ''}>
-                    <div style="margin-bottom: 5px;"><span style="${dateStyle}">${date}</span><span style="${tagStyle}">${tag}</span></div>
-                    <span style="${titleStyle}">${title}</span>
+            <li>
+                <a href="${linkUrl}" ${linkUrl.startsWith('http') ? 'target="_blank"' : ''}>
+                    <span class="news-date">${date}</span>
+                    <span class="news-tag">${tag}</span>
+                    <span class="news-title">${title}</span>
                 </a>
             </li>`;
         } else {
             html += `
-            <li style="${liStyle}">
-                <div style="display: flex; flex-wrap: wrap; align-items: center;">
-                    <div style="margin-bottom: 5px;"><span style="${dateStyle}">${date}</span><span style="${tagStyle}">${tag}</span></div>
-                    <span style="${titleStyle}">${title}</span>
+            <li>
+                <div class="news-content">
+                    <span class="news-date">${date}</span>
+                    <span class="news-tag">${tag}</span>
+                    <span class="news-title">${title}</span>
                 </div>
             </li>`;
         }
     });
-    target.innerHTML = `<ul style="list-style: none; padding: 0; margin: 0;">${html || '<li style="padding: 20px; text-align: center; color: #999;">現在、お知らせはありません。</li>'}</ul>`;
+    target.innerHTML = html || '<li>現在、お知らせはありません。</li>';
 }
 
 async function loadArticle() {
@@ -132,22 +130,20 @@ async function loadArticle() {
 
     let imgHtml = '';
     if (imgUrl) {
-        imgHtml = `<div style="text-align: center; margin: 30px 0;"><img src="${imgUrl}" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" alt=""></div>`;
+        imgHtml = `<div class="article-image"><img src="${imgUrl}" alt=""></div>`;
     }
 
     container.innerHTML = `
-        <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 3px solid #f2b842;">
-            <div style="margin-bottom: 12px;">
-                <span style="background: #f2b842; color: white; font-weight: bold; padding: 5px 12px; border-radius: 3px; font-size: 0.9rem;">${tag}</span>
-                <span style="margin-left: 15px; color: #666; font-weight: bold;">${date}</span>
-            </div>
-            <h1 style="font-size: 1.8rem; color: #333; line-height: 1.4; margin: 0;">${title}</h1>
+        <div class="article-header">
+            <span class="news-tag">${tag}</span>
+            <span class="article-date">${date}</span>
+            <h1 class="article-title">${title}</h1>
         </div>
         ${imgHtml}
-        <div style="font-size: 1.1rem; line-height: 2.0; color: #444; padding: 10px 0;">${content}</div>
-        <div style="text-align: center; margin-top: 60px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-            <a href="index.html" style="display: inline-block; padding: 12px 30px; background: #004098; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">← ホームに戻る</a>
-            <a href="news.html" style="display: inline-block; padding: 12px 30px; background: #f2b842; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">一覧を見る</a>
+        <div class="article-body">${content}</div>
+        <div class="article-footer-links">
+            <a href="index.html" class="btn-back">← ホームに戻る</a>
+            <a href="news.html" class="btn-list">一覧を見る</a>
         </div>
     `;
 }
@@ -178,45 +174,38 @@ async function loadNextStage() {
         let imgHtml = '';
         if (img1 || img2) {
             imgHtml = `
-            <div style="display: flex; gap: 15px; margin-bottom: 30px; justify-content: center; flex-wrap: wrap;">
-                ${img1 ? `<img src="${img1}" style="max-width: 100%; height: auto; max-height: 400px; border-radius: 8px; cursor: zoom-in; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onclick="openModal(this.src)">` : ''}
-                ${img2 ? `<img src="${img2}" style="max-width: 100%; height: auto; max-height: 400px; border-radius: 8px; cursor: zoom-in; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onclick="openModal(this.src)">` : ''}
+            <div class="stage-image-container">
+                ${img1 ? `<img src="${img1}" onclick="openModal(this.src)">` : ''}
+                ${img2 ? `<img src="${img2}" onclick="openModal(this.src)">` : ''}
             </div>`;
         }
         
         let infoHtml = '';
-        if (date) infoHtml += `<div style="margin-bottom: 12px; display: flex;"><b style="min-width: 60px;">日時：</b><div>${date}</div></div>`;
-        if (place) infoHtml += `<div style="margin-bottom: 12px; display: flex;"><b style="min-width: 60px;">会場：</b><div>${place}</div></div>`;
-        if (script) infoHtml += `<div style="margin-bottom: 12px; display: flex;"><b style="min-width: 60px;">脚本：</b><div>${script}</div></div>`;
-        if (price) infoHtml += `<div style="margin-bottom: 12px; display: flex;"><b style="min-width: 60px;">料金：</b><div>${price}</div></div>`;
-        
+        if (date) infoHtml += `<div><b>日時：</b>${date}</div>`;
+        if (place) infoHtml += `<div><b>会場：</b>${place}</div>`;
+        if (script) infoHtml += `<div><b>脚本：</b>${script}</div>`;
+        if (price) infoHtml += `<div><b>料金：</b>${price}</div>`;
         if (reserveUrl && reserveUrl.startsWith('http')) {
-            infoHtml += `<div style="margin-top: 25px;"><a href="${reserveUrl}" target="_blank" style="display: inline-block; padding: 12px 35px; background: #f2b842; color: #fff; text-decoration: none; border-radius: 30px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(242, 184, 66, 0.3);">チケット予約はこちら</a></div>`;
+            infoHtml += `<div><b>予約：</b><a href="${reserveUrl}" target="_blank">こちらから</a></div>`;
         }
         
         let contentHtml = '';
-        if (infoHtml) {
-            contentHtml += `<div style="font-size: 1.1rem; line-height: 1.8; color: #333; padding: 25px; background: #fff; border-radius: 8px; border: 1px solid #eee; margin-bottom: 30px;">${infoHtml}</div>`;
-        }
+        if (infoHtml) contentHtml += `<div class="stage-info">${infoHtml}</div>`;
         
         if (castText || staffText) {
-            if (castText) {
-                contentHtml += `<div style="margin-bottom: 30px; line-height: 1.8;"><b style="font-size: 1.2rem; color: #004098; display: block; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 15px;">役者</b><div style="padding: 0 10px;">${castText}</div></div>`;
-            }
-            if (staffText) {
-                contentHtml += `<div style="margin-bottom: 30px; line-height: 1.8;"><b style="font-size: 1.2rem; color: #004098; display: block; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 15px;">スタッフ</b><div style="padding: 0 10px;">${staffText}</div></div>`;
-            }
+            if (castText) contentHtml += `<div class="stage-cast"><b>役者：</b><div>${castText}</div></div>`;
+            if (staffText) contentHtml += `<div class="stage-staff"><b>スタッフ：</b><div>${staffText}</div></div>`;
         }
         
         container.innerHTML = `
-            <h2 style="color:#004098; font-size: 1.8rem; line-height: 1.4; margin-bottom: 25px; text-align: center;">${groupName}<br><span style="font-size: 2.2rem; color: #333;">${titleText}</span></h2>
-            <div style="background:#fafafa; padding:40px 20px; border-radius:12px; margin-top:20px;">
+            <h2>${groupName}${titleText}</h2>
+            <div class="stage-box">
                 ${imgHtml}
                 ${contentHtml}
             </div>`;
         setupModal();
     } else { 
-        container.innerHTML = '<p style="text-align:center; padding: 60px 0; font-size:1.2rem; color:#999; font-weight:bold;">COMING SOON...</p>';
+        container.innerHTML = '<p class="coming-soon">COMING SOON...</p>'; 
     }
 }
 
@@ -231,12 +220,11 @@ async function loadPastStages() {
         if (cols.length < 3 || cols[0] !== '公開') return;
         const img1 = formatImg(cols[7]);
         const img2 = formatImg(cols[8]);
-        html += `<div style="margin-bottom: 40px; border-bottom: 1px solid #ddd; padding-bottom: 30px;">
-            <h3 style="color: #004098; font-size: 1.4rem; margin: 0 0 10px 0;">${cols[1]}『${cols[2]}』</h3>
-            <p style="color: #555; font-weight: bold; margin: 0 0 20px 0;">${cols[3]} @${cols[4]}</p>
-            <div style="display: flex; gap: 15px; overflow-x: auto;">
-                ${img1 ? `<img src="${img1}" loading="lazy" onclick="openModal(this.src)" style="height: 180px; border-radius: 6px; cursor: zoom-in; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">` : ''}
-                ${img2 ? `<img src="${img2}" loading="lazy" onclick="openModal(this.src)" style="height: 180px; border-radius: 6px; cursor: zoom-in; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">` : ''}
+        html += `<div class="past-item">
+            <h3>${cols[1]}『${cols[2]}』</h3><p>${cols[3]} @${cols[4]}</p>
+            <div class="past-images">
+                ${img1 ? `<img src="${img1}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)">` : ''}
+                ${img2 ? `<img src="${img2}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)">` : ''}
             </div></div>`;
     });
     container.innerHTML = html;
@@ -258,14 +246,11 @@ async function loadMembers() {
     });
     let html = '';
     Object.keys(groups).sort().reverse().forEach(term => {
-        html += `<div style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
-            <button onclick="toggleAccordion(this)" style="width: 100%; text-align: left; background: #fafafa; padding: 18px 20px; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: #333;">${term} <span class="icon" style="color: #004098; font-size: 1.5rem; line-height: 1;">+</span></button>
-            <div style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: #fff;">
-                <ul style="list-style: none; padding: 20px; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px;">
-                    ${groups[term].map(m => `<li><b style="color: #004098; font-size: 1.1rem;">${m.name}</b><br><small style="color: #666; font-weight: bold;">${m.role}</small></li>`).join('')}
-                </ul>
-            </div>
-        </div>`;
+        html += `<div class="accordion-item">
+            <button class="accordion-header" onclick="toggleAccordion(this)">${term} <span class="icon">+</span></button>
+            <div class="accordion-content"><ul class="member-list-mini">
+                ${groups[term].map(m => `<li><b>${m.name}</b><br><small>${m.role}</small></li>`).join('')}
+            </ul></div></div>`;
     });
     container.innerHTML = html;
 }
@@ -286,43 +271,35 @@ async function loadExternal() {
         const img1 = formatImg(cols[5]);
         const img2 = formatImg(cols[6]);
         const link = cols[7];
-        html += `<div style="padding: 30px; border-left: 6px solid #f2b842; background: #fff; margin-bottom: 30px; border-radius: 0 8px 8px 0; box-shadow: 0 3px 10px rgba(0,0,0,0.05);">
-            <h3 style="margin: 0 0 10px 0; color: #333; font-size: 1.4rem;">${title}</h3>
-            <span style="color: #666; display: block; margin-bottom: 20px; font-weight: bold; background: #f4f4f4; padding: 5px 12px; border-radius: 4px; display: inline-block;">${date}</span>
-            <div style="display: flex; gap: 15px; overflow-x: auto; margin-bottom: 20px;">
-                ${img1 ? `<img src="${img1}" loading="lazy" onclick="openModal(this.src)" style="height: 140px; border-radius: 6px; cursor: zoom-in;">` : ''}
-                ${img2 ? `<img src="${img2}" loading="lazy" onclick="openModal(this.src)" style="height: 140px; border-radius: 6px; cursor: zoom-in;">` : ''}
+        html += `<div class="external-item">
+            <h3>${title}</h3>
+            <small>${date}</small>
+            <div class="external-images">
+                ${img1 ? `<img src="${img1}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)">` : ''}
+                ${img2 ? `<img src="${img2}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)">` : ''}
             </div>
-            ${place ? `<p style="margin: 0 0 15px 0; font-weight: bold; color: #004098;">📍 会場：${place}</p>` : ''}
-            <div style="margin-bottom: 25px; line-height: 1.9; color: #444;">${detail}</div>
-            ${link && link.trim() !== '#' && link.trim() !== '' ? `<a href="${link}" target="_blank" style="display: inline-block; padding: 10px 25px; background: #f2b842; color: #fff; text-decoration: none; border-radius: 30px; font-weight: bold; box-shadow: 0 3px 6px rgba(242, 184, 66, 0.3);">詳細を見る →</a>` : ''}
+            ${place ? `<p>会場：${place}</p>` : ''}
+            <div class="external-detail">${detail}</div>
+            ${link && link.trim() !== '#' && link.trim() !== '' ? `<a href="${link}" target="_blank" class="external-link">詳細へ →</a>` : ''}
         </div>`;
     });
-    container.innerHTML = html || '<p style="text-align:center; padding: 50px 0; color:#999; font-weight:bold;">現在、外部参加情報はありません。</p>';
+    container.innerHTML = html || '<p class="no-data">現在、外部参加情報はありません。</p>';
 }
 
 function setupModal() {
     if (document.getElementById('js-image-modal')) return;
-    document.body.insertAdjacentHTML('beforeend', `<div id="js-image-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.85); display:none; justify-content:center; align-items:center; cursor:zoom-out;" onclick="this.style.display='none'"><img id="js-modal-image" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);"></div>`);
+    document.body.insertAdjacentHTML('beforeend', `<div id="js-image-modal" class="image-modal-overlay" onclick="this.style.display='none'"><img class="image-modal-content" id="js-modal-image"></div>`);
 }
 window.openModal = function(src) {
     const modal = document.getElementById('js-image-modal');
     const img = document.getElementById('js-modal-image');
-    if(modal && img) { 
-        img.src = src; 
-        modal.style.display = 'flex'; 
-    }
+    if(modal && img) { img.src = src; modal.style.display = 'block'; }
 };
 window.toggleAccordion = function(el) {
     const content = el.nextElementSibling;
     const icon = el.querySelector('.icon');
-    if (content.style.maxHeight && content.style.maxHeight !== '0px') { 
-        content.style.maxHeight = '0px'; 
-        if(icon) icon.innerText = '+'; 
-    } else { 
-        content.style.maxHeight = content.scrollHeight + "px"; 
-        if(icon) icon.innerText = '-'; 
-    }
+    if (content.style.maxHeight) { content.style.maxHeight = null; if(icon) icon.innerText = '+'; } 
+    else { content.style.maxHeight = content.scrollHeight + "px"; if(icon) icon.innerText = '-'; }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
