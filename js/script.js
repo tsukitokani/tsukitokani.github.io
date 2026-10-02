@@ -95,7 +95,7 @@ async function loadArticle() {
             <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${title}</h2>
         </div>
         ${imgHtml}
-        <div style="line-height: 1.8; font-size: 1.1rem; white-space: pre-wrap;">${content}</div>
+        <div style="line-height: 1.8; font-size: 1.1rem;">${content}</div>
         <div style="text-align: center; margin-top: 50px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
             <a href="index.html" style="display:inline-block; padding: 10px 30px; background:var(--main-blue); color:white; border-radius:30px; font-weight:bold;">← ホームに戻る</a>
             <a href="news.html" style="display:inline-block; padding: 10px 30px; background:var(--main-yellow); color:white; border-radius:30px; font-weight:bold;">一覧を見る</a>
@@ -135,13 +135,24 @@ async function loadNextStage() {
         }
         
         let infoHtml = '';
-        if (date) infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">日時：</b><span style="white-space: pre-wrap;">${date}</span></div>`;
-        if (place) infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">会場：</b><span style="white-space: pre-wrap;">${place}</span></div>`;
-        if (script) infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">脚本：</b><span style="white-space: pre-wrap;">${script}</span></div>`;
-        if (price) infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">料金：</b><span style="white-space: pre-wrap;">${price}</span></div>`;
-        
+        const makeRow = (label, val, isLink = false) => {
+            if (!val) return '';
+            const content = isLink 
+                ? `<a href="${val}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a>` 
+                : val;
+            return `
+            <div style="display: table; width: 100%; margin-bottom: 8px;">
+                <b style="display: table-cell; width: 4.5em; vertical-align: top; white-space: nowrap;">${label}：</b>
+                <div style="display: table-cell; vertical-align: top;">${content}</div>
+            </div>`;
+        };
+
+        infoHtml += makeRow('日時', date);
+        infoHtml += makeRow('会場', place);
+        infoHtml += makeRow('脚本', script);
+        infoHtml += makeRow('料金', price);
         if (reserveUrl && reserveUrl.startsWith('http')) {
-            infoHtml += `<div style="margin-bottom: 8px; display: flex;"><b style="white-space: nowrap;">予約：</b><span><a href="${reserveUrl}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a></span></div>`;
+            infoHtml += makeRow('予約', reserveUrl, true);
         }
         
         let contentHtml = '';
@@ -154,10 +165,10 @@ async function loadNextStage() {
                 contentHtml += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 25px 0;">`;
             }
             if (castText) {
-                contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div style="white-space: pre-wrap; padding-left: 2px;">${castText}</div></div>`;
+                contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div style="padding-left: 2px;">${castText}</div></div>`;
             }
             if (staffText) {
-                contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div style="white-space: pre-wrap; padding-left: 2px;">${staffText}</div></div>`;
+                contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div style="padding-left: 2px;">${staffText}</div></div>`;
             }
         }
         
@@ -250,7 +261,7 @@ async function loadExternal() {
                 ${img2 ? `<img src="${img2}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:120px; cursor:zoom-in; border-radius:4px;">` : ''}
             </div>
             ${place ? `<p style="margin:0 0 10px 0; font-weight:800; color:#555;">会場：${place}</p>` : ''}
-            <p style="margin-bottom:15px; white-space:pre-wrap;">${detail}</p>
+            <p style="margin-bottom:15px;">${detail}</p>
             ${link && link.trim() !== '#' && link.trim() !== '' ? `<a href="${link}" target="_blank" style="color:var(--main-yellow); font-weight:800;">詳細へ →</a>` : ''}
         </div>`;
     });
