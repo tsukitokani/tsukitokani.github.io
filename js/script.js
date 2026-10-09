@@ -14,7 +14,7 @@ function autoLink(text) {
     return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--main-yellow); font-weight:bold; text-decoration:underline; word-break:break-all;">$1</a>');
 }
 
-// ★ 日程テキストを「日付」と「時間」に自動分離して綺麗に整列させる処理
+// ★ 日程テキストを「日付(右揃え)」と「時間」に自動分離して綺麗に整列させる処理
 function formatSchedule(text) {
     if (!text) return '';
     const lines = text.split(/<br\s*\/?>|\n/);
@@ -36,7 +36,7 @@ function formatSchedule(text) {
         
         html += `
         <div style="display: table-row;">
-            <div style="display: table-cell; padding-right: 15px; white-space: nowrap;">${datePart}</div>
+            <div style="display: table-cell; padding-right: 18px; white-space: nowrap; text-align: right;">${datePart}</div>
             <div style="display: table-cell;">${timePart}</div>
         </div>`;
     });
@@ -166,7 +166,6 @@ async function loadNextStage() {
         const groupName = cols[1] || '愛知淑徳大学演劇研究会「月とカニ」';
         const titleText = cols[2]?.trim() ? `『${cols[2]}』` : '';
         
-        // ★ 自動整列処理を「日程」データに適用
         const dateRaw = cols[3]?.trim() || '';
         const dateHtml = formatSchedule(dateRaw);
         
@@ -190,7 +189,6 @@ async function loadNextStage() {
             </div>`;
         }
         
-        // ★ font-familyを削除してプロポーショナルフォントに戻しました
         const makeRow = (label, val, isLink = false) => {
             if (!val) return '';
             const content = isLink ? `<a href="${val}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a>` : val;
@@ -202,7 +200,7 @@ async function loadNextStage() {
         };
 
         let infoHtml = '';
-        infoHtml += makeRow('日時', dateHtml); // 整列済みのHTMLを渡す
+        infoHtml += makeRow('日時', dateHtml);
         infoHtml += makeRow('会場', place);
         infoHtml += makeRow('脚本', script);
         if (direction) infoHtml += makeRow(directionType, direction);
