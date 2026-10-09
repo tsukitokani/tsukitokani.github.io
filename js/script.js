@@ -6,6 +6,14 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
+// リッチテキスト(HTML)と競合しない、安全なURLリンク化処理
+function autoLink(text) {
+    if (!text) return '';
+    if (text.includes('<p>') || text.includes('href=')) return text;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--main-yellow); font-weight:bold; text-decoration:underline; word-break:break-all;">$1</a>');
+}
+
 async function loadNews() {
     const list = document.getElementById('js-news-list');
     const pageList = document.getElementById('js-news-page-list');
@@ -16,10 +24,7 @@ async function loadNews() {
     const text = await res.text();
 
     let rows = text.split('\n').slice(1).map((row, index) => ({ data: row.split('\t'), id: index })).reverse();
-    // 公開およびピン留めの両方を対象にする
     rows = rows.filter(item => item.data[0] === '公開' || (item.data[0] && item.data[0].includes('ピン留め')));
-
-    // ピン留めを最上位にする
     rows.sort((a, b) => {
         const aPin = a.data[0] && a.data[0].includes('ピン留め') ? 1 : 0;
         const bPin = b.data[0] && b.data[0].includes('ピン留め') ? 1 : 0;
@@ -39,7 +44,7 @@ async function loadNews() {
         const contentOrUrl = cols[4]?.trim() || '';
 
         let linkUrl = '';
-        if (contentOrUrl.startsWith('http')) {
+        if (contentOrUrl.startsWith('http') && !contentOrUrl.includes('<')) {
             linkUrl = contentOrUrl;
         } else if (contentOrUrl !== '') {
             linkUrl = `article.html?id=${item.id}`;
@@ -91,7 +96,7 @@ async function loadArticle() {
     const date = cols[1] || '';
     const tag = cols[2] || '';
     const title = cols[3] || '';
-    const content = cols[4] || '';
+    const content = autoLink(cols[4] || '');
     const imgUrl1 = formatImg(cols[5]);
     const imgUrl2 = formatImg(cols[6]);
 
@@ -111,7 +116,7 @@ async function loadArticle() {
             <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${isPin ? '📌 ' : ''}${title}</h2>
         </div>
         ${imgHtml}
-        <div style="line-height: 1.8; font-size: 1.1rem;">${content}</div>
+        <div class="rich-content" style="line-height: 1.8; font-size: 1.1rem; white-space: pre-wrap;">${content}</div>
         <div style="text-align: center; margin-top: 50px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
             <a href="index.html" style="display:inline-block; padding: 10px 30px; background:var(--main-blue); color:white; border-radius:30px; font-weight:bold;">← ホームに戻る</a>
             <a href="news.html" style="display:inline-block; padding: 10px 30px; background:var(--main-yellow); color:white; border-radius:30px; font-weight:bold;">一覧を見る</a>
@@ -130,15 +135,14 @@ async function loadNextStage() {
     if (cols && cols[0] === '公開') {
         const groupName = cols[1] || '愛知淑徳大学演劇研究会「月とカニ」';
         const titleText = cols[2]?.trim() ? `『${cols[2]}』` : '';
-        
         const date = cols[3]?.trim() || '';
         const place = cols[4]?.trim() || '';
         const script = cols[5]?.trim() || '';
         const img1 = formatImg(cols[6]);
         const img2 = formatImg(cols[7]);
         const reserveUrl = cols[8]?.trim() || '';
-        const castText = cols[9]?.trim() || '';
-        const staffText = cols[10]?.trim() || '';
+        const castText = autoLink(cols[9]?.trim() || '');
+        const staffText = autoLink(cols[10]?.trim() || '');
         const price = cols[11]?.trim() || '';
         const direction = cols[12]?.trim() || '';
         const directionType = cols[13]?.trim() || '演出';
@@ -152,45 +156,32 @@ async function loadNextStage() {
             </div>`;
         }
         
-        let infoHtml = '';
+        // ★ ここに等幅フォント(monospace)の設定を組み込んでいます
         const makeRow = (label, val, isLink = false) => {
             if (!val) return '';
-            const content = isLink 
-                ? `<a href="${val}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a>` 
-                : val;
+            const content = isLink ? `<a href="${val}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a>` : val;
             return `
             <div style="display: table; width: 100%; margin-bottom: 8px;">
                 <b style="display: table-cell; width: 6.5em; vertical-align: top; white-space: nowrap;">${label}：</b>
-                <div style="display: table-cell; vertical-align: top;">${content}</div>
+                <div style="display: table-cell; vertical-align: top; white-space: pre-wrap; font-family: Consolas, 'Courier New', Courier, Monaco, monospace, 'ＭＳ ゴシック', 'MS Gothic';">${content}</div>
             </div>`;
         };
 
+        let infoHtml = '';
         infoHtml += makeRow('日時', date);
         infoHtml += makeRow('会場', place);
         infoHtml += makeRow('脚本', script);
-        if (direction) {
-            infoHtml += makeRow(directionType, direction);
-        }
+        if (direction) infoHtml += makeRow(directionType, direction);
         infoHtml += makeRow('料金', price);
-        if (reserveUrl && reserveUrl.startsWith('http')) {
-            infoHtml += makeRow('予約', reserveUrl, true);
-        }
+        if (reserveUrl && reserveUrl.startsWith('http')) infoHtml += makeRow('予約', reserveUrl, true);
         
         let contentHtml = '';
-        if (infoHtml) {
-            contentHtml += `<div style="font-size: 1.05rem; line-height: 1.6;">${infoHtml}</div>`;
-        }
+        if (infoHtml) contentHtml += `<div style="font-size: 1.05rem; line-height: 1.6;">${infoHtml}</div>`;
         
         if (castText || staffText) {
-            if (infoHtml) {
-                contentHtml += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 25px 0;">`;
-            }
-            if (castText) {
-                contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div style="padding-left: 2px;">${castText}</div></div>`;
-            }
-            if (staffText) {
-                contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div style="padding-left: 2px;">${staffText}</div></div>`;
-            }
+            if (infoHtml) contentHtml += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 25px 0;">`;
+            if (castText) contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div class="rich-content" style="white-space: pre-wrap; padding-left: 2px;">${castText}</div></div>`;
+            if (staffText) contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div class="rich-content" style="white-space: pre-wrap; padding-left: 2px;">${staffText}</div></div>`;
         }
         
         if (titleText || imgHtml || contentHtml) {
@@ -204,9 +195,7 @@ async function loadNextStage() {
         } else {
             container.innerHTML = '<p style="text-align:center; padding: 60px 0; font-size:1.2rem; color:#999; font-weight:bold;">COMING SOON...</p>';
         }
-    } else { 
-        container.innerHTML = '<p style="text-align:center; padding: 60px 0; font-size:1.2rem; color:#999; font-weight:bold;">COMING SOON...</p>'; 
-    }
+    } else { container.innerHTML = '<p style="text-align:center; padding: 60px 0; font-size:1.2rem; color:#999; font-weight:bold;">COMING SOON...</p>'; }
 }
 
 async function loadPastStages() {
@@ -217,26 +206,15 @@ async function loadPastStages() {
     const rows = text.split('\n').slice(1).reverse();
     let html = '';
 
-    // 日付フォーマット整形関数
     const formatStageDate = (rawDate) => {
         if (!rawDate) return '';
         let clean = rawDate.replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim();
-        
-        if (clean.includes('年')) {
-            return clean;
-        }
-
+        if (clean.includes('年')) return clean;
         const matches = clean.match(/(\d{1,2})\/(\d{1,2})/g);
         if (matches && matches.length > 0) {
             const currentYear = new Date().getFullYear();
-            if (matches.length === 1) {
-                const [m, d] = matches[0].split('/');
-                return `${currentYear}年${m}月${d}日`;
-            } else {
-                const [m1, d1] = matches[0].split('/');
-                const [m2, d2] = matches[matches.length - 1].split('/');
-                return `${currentYear}年${m1}月${d1}日~${m2}月${d2}日`;
-            }
+            if (matches.length === 1) return `${currentYear}年${matches[0].split('/')[0]}月${matches[0].split('/')[1]}日`;
+            else return `${currentYear}年${matches[0].split('/')[0]}月${matches[0].split('/')[1]}日~${matches[matches.length - 1].split('/')[0]}月${matches[matches.length - 1].split('/')[1]}日`;
         }
         return clean;
     };
@@ -244,36 +222,25 @@ async function loadPastStages() {
     rows.forEach(row => {
         const cols = row.split('\t');
         if (cols.length < 3 || cols[0] !== '公開') return;
-        
-        const period = cols[1] || '';
-        const title = cols[2] || '';
-        const rawDate = cols[3] || '';
-        const place = (cols[4] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim();
-        const script = cols[5]?.trim() || '';
-        const direction = cols[6]?.trim() || '';
-        const img1 = formatImg(cols[7]);
-        const img2 = formatImg(cols[8]);
-
+        const period = cols[1] || ''; const title = cols[2] || ''; const rawDate = cols[3] || '';
+        const place = autoLink((cols[4] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim());
+        const script = autoLink(cols[5]?.trim() || ''); const direction = autoLink(cols[6]?.trim() || '');
+        const img1 = formatImg(cols[7]); const img2 = formatImg(cols[8]);
         const displayDate = formatStageDate(rawDate);
 
-        // 脚本・演出（潤色対応）の組み立て
         let staffInfo = [];
         if (script) staffInfo.push(`脚本：${script}`);
         if (direction) {
             let dirText = direction;
-            if (!direction.startsWith('演出') && !direction.startsWith('潤色')) {
-                dirText = `演出：${direction}`;
-            }
+            if (!direction.startsWith('演出') && !direction.startsWith('潤色') && !direction.includes('<a')) dirText = `演出：${direction}`;
             staffInfo.push(dirText);
         }
-        const staffHtml = staffInfo.length > 0 
-            ? `<p style="margin: 4px 0 0 0; color: #555; font-size: 0.95rem;">${staffInfo.join(' / ')}</p>` 
-            : '';
+        const staffHtml = staffInfo.length > 0 ? `<p style="margin: 4px 0 0 0; color: #555; font-size: 0.95rem;">${staffInfo.join(' / ')}</p>` : '';
 
         html += `
         <div style="margin-bottom:50px; border-bottom:1px solid #ddd; padding-bottom:30px;">
             <h3 style="color:var(--main-blue); margin-bottom: 6px;">${period}『${title}』</h3>
-            <p style="margin: 0; color: #444;">${displayDate}${place ? ` @${place}` : ''}</p>
+            <p style="margin: 0; color: #444; white-space: pre-wrap;">${displayDate}${place ? ` @${place}` : ''}</p>
             ${staffHtml}
             <div style="display:flex; gap:10px; overflow-x:auto; margin-top:12px;">
                 ${img1 ? `<img src="${img1}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:150px; cursor:zoom-in; border-radius: 4px;">` : ''}
@@ -320,13 +287,10 @@ async function loadExternal() {
     rows.forEach(row => {
         const cols = row.split('\t');
         if (cols.length < 3 || cols[0] !== '公開') return;
-        const title = cols[1] || '';
-        const date = cols[2] || '';
+        const title = cols[1] || ''; const date = cols[2] || '';
         const place = (cols[3] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim();
-        const detail = cols[4] || '';
-        const img1 = formatImg(cols[5]);
-        const img2 = formatImg(cols[6]);
-        const link = cols[7];
+        const detail = autoLink(cols[4] || '');
+        const img1 = formatImg(cols[5]); const img2 = formatImg(cols[6]); const link = cols[7];
         html += `<div style="padding:20px; border-left:5px solid var(--main-yellow); background:#f9f9f9; margin-bottom:20px;">
             <h3 style="margin:0 0 5px 0; color:var(--text-black);">${title}</h3>
             <small style="color:#666; display:block; margin-bottom:10px;">${date}</small>
@@ -335,7 +299,7 @@ async function loadExternal() {
                 ${img2 ? `<img src="${img2}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:120px; cursor:zoom-in; border-radius:4px;">` : ''}
             </div>
             ${place ? `<p style="margin:0 0 10px 0; font-weight:800; color:#555;">会場：${place}</p>` : ''}
-            <p style="margin-bottom:15px;">${detail}</p>
+            <div class="rich-content" style="margin-bottom:15px; white-space: pre-wrap;">${detail}</div>
             ${link && link.trim() !== '#' && link.trim() !== '' ? `<a href="${link}" target="_blank" style="color:var(--main-yellow); font-weight:800;">詳細へ →</a>` : ''}
         </div>`;
     });
@@ -347,21 +311,18 @@ function setupModal() {
     document.body.insertAdjacentHTML('beforeend', `<div id="js-image-modal" class="image-modal-overlay" onclick="this.style.display='none'"><img class="image-modal-content" id="js-modal-image"></div>`);
 }
 window.openModal = function(src) {
-    const modal = document.getElementById('js-image-modal');
-    const img = document.getElementById('js-modal-image');
+    const modal = document.getElementById('js-image-modal'); const img = document.getElementById('js-modal-image');
     if(modal && img) { img.src = src; modal.style.display = 'block'; }
 };
 window.toggleAccordion = function(el) {
-    const content = el.nextElementSibling;
-    const icon = el.querySelector('.icon');
+    const content = el.nextElementSibling; const icon = el.querySelector('.icon');
     if (content.style.maxHeight) { content.style.maxHeight = null; if(icon) icon.innerText = '+'; } 
     else { content.style.maxHeight = content.scrollHeight + "px"; if(icon) icon.innerText = '-'; }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     loadNews(); loadNextStage(); loadPastStages(); loadMembers(); loadExternal(); loadArticle(); setupModal();
-    const hamBtn = document.getElementById('js-hamburger');
-    const nav = document.getElementById('js-nav');
+    const hamBtn = document.getElementById('js-hamburger'); const nav = document.getElementById('js-nav');
     if(hamBtn && nav) {
         hamBtn.addEventListener('click', () => { hamBtn.classList.toggle('active'); nav.classList.toggle('active'); });
         nav.querySelectorAll('a').forEach(a => { a.addEventListener('click', () => { hamBtn.classList.remove('active'); nav.classList.remove('active'); }); });
