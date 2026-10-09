@@ -14,6 +14,36 @@ function autoLink(text) {
     return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--main-yellow); font-weight:bold; text-decoration:underline; word-break:break-all;">$1</a>');
 }
 
+// ★ 日程テキストを「日付」と「時間」に自動分離して綺麗に整列させる処理
+function formatSchedule(text) {
+    if (!text) return '';
+    const lines = text.split(/<br\s*\/?>|\n/);
+    let html = '<div style="display: table; border-spacing: 0;">';
+    
+    lines.forEach(line => {
+        line = line.trim();
+        if (!line) return;
+        
+        // 「〇/〇(曜日)」のパターンを検知して切り離す
+        const match = line.match(/^(\d{1,2}\/\d{1,2}[（\(].[）\)])?(.*)$/);
+        let datePart = '';
+        let timePart = line;
+        
+        if (match && match[1]) {
+            datePart = match[1];
+            timePart = match[2].trim();
+        }
+        
+        html += `
+        <div style="display: table-row;">
+            <div style="display: table-cell; padding-right: 15px; white-space: nowrap;">${datePart}</div>
+            <div style="display: table-cell;">${timePart}</div>
+        </div>`;
+    });
+    html += '</div>';
+    return html;
+}
+
 async function loadNews() {
     const list = document.getElementById('js-news-list');
     const pageList = document.getElementById('js-news-page-list');
@@ -135,7 +165,11 @@ async function loadNextStage() {
     if (cols && cols[0] === '公開') {
         const groupName = cols[1] || '愛知淑徳大学演劇研究会「月とカニ」';
         const titleText = cols[2]?.trim() ? `『${cols[2]}』` : '';
-        const date = cols[3]?.trim() || '';
+        
+        // ★ 自動整列処理を「日程」データに適用
+        const dateRaw = cols[3]?.trim() || '';
+        const dateHtml = formatSchedule(dateRaw);
+        
         const place = cols[4]?.trim() || '';
         const script = cols[5]?.trim() || '';
         const img1 = formatImg(cols[6]);
@@ -156,19 +190,19 @@ async function loadNextStage() {
             </div>`;
         }
         
-        // ★ ここに等幅フォント(monospace)の設定を組み込んでいます
+        // ★ font-familyを削除してプロポーショナルフォントに戻しました
         const makeRow = (label, val, isLink = false) => {
             if (!val) return '';
             const content = isLink ? `<a href="${val}" target="_blank" style="color: var(--main-yellow); font-weight: 800; text-decoration: underline;">こちらから</a>` : val;
             return `
             <div style="display: table; width: 100%; margin-bottom: 8px;">
                 <b style="display: table-cell; width: 6.5em; vertical-align: top; white-space: nowrap;">${label}：</b>
-                <div style="display: table-cell; vertical-align: top; white-space: pre-wrap; font-family: Consolas, 'Courier New', Courier, Monaco, monospace, 'ＭＳ ゴシック', 'MS Gothic';">${content}</div>
+                <div style="display: table-cell; vertical-align: top; white-space: pre-wrap;">${content}</div>
             </div>`;
         };
 
         let infoHtml = '';
-        infoHtml += makeRow('日時', date);
+        infoHtml += makeRow('日時', dateHtml); // 整列済みのHTMLを渡す
         infoHtml += makeRow('会場', place);
         infoHtml += makeRow('脚本', script);
         if (direction) infoHtml += makeRow(directionType, direction);
