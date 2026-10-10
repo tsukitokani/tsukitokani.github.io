@@ -6,15 +6,60 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
-// リッチテキスト(HTML)と競合しない、安全なURLリンク化処理
+// URLの安全なリンク化処理
 function autoLink(text) {
     if (!text) return '';
-    if (text.includes('<p>') || text.includes('href=')) return text;
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--main-yellow); font-weight:bold; text-decoration:underline; word-break:break-all;">$1</a>');
+    if (text.includes('href=')) return text;
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+    return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 
-// ★ 日程テキストを「日付(右揃え)」と「時間」に自動分離して綺麗に整列させる処理
+// ★ 改行とHTMLタグの最適化処理（過去の<br>データとQuillの<p>データを両方自然な行間に補正）
+function formatRichContent(text) {
+    if (!text) return '';
+    
+    // 閉じられていない <b> があれば <br> の誤入力として安全に置換
+    if (text.includes('<b>') && !text.includes('</b>')) {
+        text = text.replace(/<b>/g, '<br>');
+    }
+    
+    // <p> を含まない過去データの場合、改行コード(\n)を<br>に統一
+    if (!text.includes('<p>') && !text.includes('<p ')) {
+        text = text.replace(/\r?\n/g, '<br>');
+    }
+    
+    return autoLink(text);
+}
+
+// ★ 記事や本文の行間を自然に保つためのスタイル注入
+function injectRichContentStyle() {
+    if (document.getElementById('js-rich-content-style')) return;
+    const style = document.createElement('style');
+    style.id = 'js-rich-content-style';
+    style.textContent = `
+        .rich-content {
+            line-height: 1.8;
+            font-size: 1.1rem;
+            color: #333;
+        }
+        .rich-content p {
+            margin: 0 0 0.8em 0;
+            line-height: 1.8;
+        }
+        .rich-content p:last-child {
+            margin-bottom: 0;
+        }
+        .rich-content a {
+            color: var(--main-yellow);
+            font-weight: bold;
+            text-decoration: underline;
+            word-break: break-all;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// 日程テキストを「日付(右揃え)」と「時間」に自動分離して綺麗に整列させる処理
 function formatSchedule(text) {
     if (!text) return '';
     const lines = text.split(/<br\s*\/?>|\n/);
@@ -24,7 +69,6 @@ function formatSchedule(text) {
         line = line.trim();
         if (!line) return;
         
-        // 「〇/〇(曜日)」のパターンを検知して切り離す
         const match = line.match(/^(\d{1,2}\/\d{1,2}[（\(].[）\)])?(.*)$/);
         let datePart = '';
         let timePart = line;
@@ -44,6 +88,19 @@ function formatSchedule(text) {
     return html;
 }
 
+// 日付文字列をスコア化して比較する関数 (YYYY.MM.DD / YYYY.M.D 対応)
+function parseDateScore(dateStr) {
+    if (!dateStr) return 0;
+    const parts = dateStr.trim().replace(/[./]/g, '-').split('-');
+    if (parts.length >= 3) {
+        const y = parseInt(parts[0], 10) || 0;
+        const m = parseInt(parts[1], 10) || 0;
+        const d = parseInt(parts[2], 10) || 0;
+        return y * 10000 + m * 100 + d;
+    }
+    return 0;
+}
+
 async function loadNews() {
     const list = document.getElementById('js-news-list');
     const pageList = document.getElementById('js-news-page-list');
@@ -53,12 +110,14 @@ async function loadNews() {
     const res = await fetch(`${BASE_URL}gid=0&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
 
-    let rows = text.split('\n').slice(1).map((row, index) => ({ data: row.split('\t'), id: index })).reverse();
+    let rows = text.split('\n').slice(1).map((row, index) => ({ data: row.split('\t'), id: index }));
     rows = rows.filter(item => item.data[0] === '公開' || (item.data[0] && item.data[0].includes('ピン留め')));
+
     rows.sort((a, b) => {
         const aPin = a.data[0] && a.data[0].includes('ピン留め') ? 1 : 0;
         const bPin = b.data[0] && b.data[0].includes('ピン留め') ? 1 : 0;
-        return bPin - aPin;
+        if (aPin !== bPin) return bPin - aPin;
+        return parseDateScore(b.data[1]) - parseDateScore(a.data[1]);
     });
 
     if (list) { rows = rows.slice(0, 5); }
@@ -111,6 +170,8 @@ async function loadArticle() {
     const container = document.getElementById('js-article-content');
     if (!container) return;
 
+    injectRichContentStyle();
+
     const params = new URLSearchParams(window.location.search);
     const articleId = params.get('id');
     if (articleId === null) return;
@@ -126,7 +187,9 @@ async function loadArticle() {
     const date = cols[1] || '';
     const tag = cols[2] || '';
     const title = cols[3] || '';
-    const content = autoLink(cols[4] || '');
+    
+    // ★ 最適化された本文を取得
+    const content = formatRichContent(cols[4] || '');
     const imgUrl1 = formatImg(cols[5]);
     const imgUrl2 = formatImg(cols[6]);
 
@@ -146,7 +209,8 @@ async function loadArticle() {
             <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${isPin ? '📌 ' : ''}${title}</h2>
         </div>
         ${imgHtml}
-        <div class="rich-content" style="line-height: 1.8; font-size: 1.1rem; white-space: pre-wrap;">${content}</div>
+        <!-- ★ white-space: pre-wrap を除去して正常な段落余白に修正 -->
+        <div class="rich-content">${content}</div>
         <div style="text-align: center; margin-top: 50px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
             <a href="index.html" style="display:inline-block; padding: 10px 30px; background:var(--main-blue); color:white; border-radius:30px; font-weight:bold;">← ホームに戻る</a>
             <a href="news.html" style="display:inline-block; padding: 10px 30px; background:var(--main-yellow); color:white; border-radius:30px; font-weight:bold;">一覧を見る</a>
@@ -158,6 +222,8 @@ async function loadNextStage() {
     const container = document.getElementById('js-stage-detail');
     if (!container) return;
     
+    injectRichContentStyle();
+
     const res = await fetch(`${BASE_URL}gid=2122620919&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
     const cols = text.split('\n')[1].split('\t');
@@ -174,8 +240,8 @@ async function loadNextStage() {
         const img1 = formatImg(cols[6]);
         const img2 = formatImg(cols[7]);
         const reserveUrl = cols[8]?.trim() || '';
-        const castText = autoLink(cols[9]?.trim() || '');
-        const staffText = autoLink(cols[10]?.trim() || '');
+        const castText = formatRichContent(cols[9]?.trim() || '');
+        const staffText = formatRichContent(cols[10]?.trim() || '');
         const price = cols[11]?.trim() || '';
         const direction = cols[12]?.trim() || '';
         const directionType = cols[13]?.trim() || '演出';
@@ -195,7 +261,7 @@ async function loadNextStage() {
             return `
             <div style="display: table; width: 100%; margin-bottom: 8px;">
                 <b style="display: table-cell; width: 6.5em; vertical-align: top; white-space: nowrap;">${label}：</b>
-                <div style="display: table-cell; vertical-align: top; white-space: pre-wrap;">${content}</div>
+                <div style="display: table-cell; vertical-align: top;">${content}</div>
             </div>`;
         };
 
@@ -212,8 +278,8 @@ async function loadNextStage() {
         
         if (castText || staffText) {
             if (infoHtml) contentHtml += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 25px 0;">`;
-            if (castText) contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div class="rich-content" style="white-space: pre-wrap; padding-left: 2px;">${castText}</div></div>`;
-            if (staffText) contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div class="rich-content" style="white-space: pre-wrap; padding-left: 2px;">${staffText}</div></div>`;
+            if (castText) contentHtml += `<div style="margin-bottom: 25px; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">役者：</b><div class="rich-content" style="padding-left: 2px;">${castText}</div></div>`;
+            if (staffText) contentHtml += `<div style="margin-bottom: 0; line-height: 1.7;"><b style="font-size: 1.1rem; color: var(--main-blue); display: block; margin-bottom: 8px;">スタッフ：</b><div class="rich-content" style="padding-left: 2px;">${staffText}</div></div>`;
         }
         
         if (titleText || imgHtml || contentHtml) {
@@ -312,6 +378,9 @@ async function loadMembers() {
 async function loadExternal() {
     const container = document.getElementById('js-external-list');
     if (!container) return;
+    
+    injectRichContentStyle();
+
     const res = await fetch(`${BASE_URL}gid=1726086050&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
     const rows = text.split('\n').slice(1).reverse();
@@ -321,7 +390,7 @@ async function loadExternal() {
         if (cols.length < 3 || cols[0] !== '公開') return;
         const title = cols[1] || ''; const date = cols[2] || '';
         const place = (cols[3] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim();
-        const detail = autoLink(cols[4] || '');
+        const detail = formatRichContent(cols[4] || '');
         const img1 = formatImg(cols[5]); const img2 = formatImg(cols[6]); const link = cols[7];
         html += `<div style="padding:20px; border-left:5px solid var(--main-yellow); background:#f9f9f9; margin-bottom:20px;">
             <h3 style="margin:0 0 5px 0; color:var(--text-black);">${title}</h3>
@@ -331,7 +400,7 @@ async function loadExternal() {
                 ${img2 ? `<img src="${img2}" loading="lazy" class="zoomable-image" onclick="openModal(this.src)" style="height:120px; cursor:zoom-in; border-radius:4px;">` : ''}
             </div>
             ${place ? `<p style="margin:0 0 10px 0; font-weight:800; color:#555;">会場：${place}</p>` : ''}
-            <div class="rich-content" style="margin-bottom:15px; white-space: pre-wrap;">${detail}</div>
+            <div class="rich-content" style="margin-bottom:15px;">${detail}</div>
             ${link && link.trim() !== '#' && link.trim() !== '' ? `<a href="${link}" target="_blank" style="color:var(--main-yellow); font-weight:800;">詳細へ →</a>` : ''}
         </div>`;
     });
