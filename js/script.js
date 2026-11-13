@@ -6,6 +6,66 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
+const JUMP_BUTTON_LABELS = {
+    stage: '次回公演を見る →',
+    past: '過去公演を見る →',
+    member: 'メンバー紹介を見る →',
+    external: '外部情報を見る →'
+};
+
+const JUMP_CONTAINER_IDS = {
+    stage: 'js-stage-detail',
+    past: 'js-past-list',
+    member: 'js-member-accordion',
+    external: 'js-external-list'
+};
+
+function resolveJumpUrl(targetKey) {
+    if (!targetKey) return 'index.html';
+    const nav = document.getElementById('js-nav') || document.querySelector('header nav');
+    if (nav) {
+        const links = Array.from(nav.querySelectorAll('a'));
+        const matchLink = links.find(a => {
+            const txt = (a.textContent || '').toUpperCase();
+            const href = (a.getAttribute('href') || '').toLowerCase();
+            if (targetKey === 'stage') return (txt.includes('次回') || txt.includes('STAGE') || href.includes('stage') || href.includes('next')) && !txt.includes('過去') && !href.includes('past');
+            if (targetKey === 'past') return txt.includes('過去') || txt.includes('PAST') || txt.includes('ARCHIVE') || href.includes('past');
+            if (targetKey === 'member') return txt.includes('メンバー') || txt.includes('MEMBER') || txt.includes('部員') || href.includes('member');
+            if (targetKey === 'external') return txt.includes('外部') || txt.includes('EXTERNAL') || href.includes('external');
+            return false;
+        });
+        if (matchLink) {
+            const rawHref = matchLink.getAttribute('href') || '';
+            if (rawHref.startsWith('#')) {
+                return document.querySelector(rawHref) ? rawHref : `index.html${rawHref}`;
+            }
+            if (rawHref) return rawHref;
+        }
+    }
+    const cid = JUMP_CONTAINER_IDS[targetKey];
+    if (cid && document.getElementById(cid)) return `#${cid}`;
+    return `index.html?jump=${targetKey}`;
+}
+
+function parseNewsJump(rawContent) {
+    let s = (rawContent || '').trim();
+    let jump = '';
+    if (s.startsWith('#jump:')) {
+        jump = s.substring(6).trim();
+        s = '';
+    } else {
+        const idx = s.indexOf('<!--jump:');
+        if (idx !== -1) {
+            const end = s.indexOf('-->', idx);
+            if (end !== -1) {
+                jump = s.substring(idx + 9, end).trim();
+                s = (s.substring(0, idx) + s.substring(end + 3)).trim();
+            }
+        }
+    }
+    return { body: s, jump: jump };
+}
+
 let scheduledTimers = {};
 function registerAutoRefresh(key, targetTimeMs, callback) {
     const delay = targetTimeMs - new Date().getTime();
@@ -160,12 +220,15 @@ async function loadNews() {
         const date = cols[1] || '';
         const tag = cols[2] || '';
         const title = cols[3] || '';
-        const contentOrUrl = cols[4]?.trim() || '';
+        const parsed = parseNewsJump(cols[4]);
+        const contentOrUrl = parsed.body;
 
         let linkUrl = '';
-        if (contentOrUrl.startsWith('http') && !contentOrUrl.includes('<')) {
+        if (contentOrUrl === '' && parsed.jump) {
+            linkUrl = resolveJumpUrl(parsed.jump);
+        } else if (contentOrUrl.startsWith('http') && !contentOrUrl.includes('<')) {
             linkUrl = contentOrUrl;
-        } else if (contentOrUrl !== '') {
+        } else if (contentOrUrl !== '' || parsed.jump) {
             linkUrl = `article.html?id=${item.id}`;
         }
 
@@ -216,7 +279,8 @@ async function loadArticle() {
     const date = cols[1] || '';
     const tag = cols[2] || '';
     const title = cols[3] || '';
-    const content = formatRichContent(cols[4] || '');
+    const parsed = parseNewsJump(cols[4]);
+    const content = formatRichContent(parsed.body);
     const imgUrl1 = formatImg(cols[5]);
     const imgUrl2 = formatImg(cols[6]);
 
@@ -229,6 +293,15 @@ async function loadArticle() {
         </div>`;
     }
 
+    let jumpBtnHtml = '';
+    if (parsed.jump && JUMP_BUTTON_LABELS[parsed.jump]) {
+        const jumpHref = resolveJumpUrl(parsed.jump);
+        jumpBtnHtml = `
+        <div style="text-align: center; margin-top: 35px;">
+            <a href="${jumpHref}" style="display:inline-block; padding: 12px 36px; background:var(--main-yellow); color:white; border-radius:30px; font-weight:bold; font-size:1.05rem; text-decoration:none; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">${JUMP_BUTTON_LABELS[parsed.jump]}</a>
+        </div>`;
+    }
+
     container.innerHTML = `
         <div style="margin-bottom: 20px; border-bottom: 2px solid var(--main-yellow); padding-bottom: 15px;">
             <span class="news-tag" style="background:var(--main-yellow); color:white; display:inline-block; margin-bottom:10px; padding: 4px 12px; border-radius: 2px; font-weight: 800; font-size: 0.8rem;">${tag}</span>
@@ -237,6 +310,7 @@ async function loadArticle() {
         </div>
         ${imgHtml}
         <div class="rich-content">${content}</div>
+        ${jumpBtnHtml}
         <div style="text-align: center; margin-top: 50px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
             <a href="index.html" style="display:inline-block; padding: 10px 30px; background:var(--main-blue); color:white; border-radius:30px; font-weight:bold;">← ホームに戻る</a>
             <a href="news.html" style="display:inline-block; padding: 10px 30px; background:var(--main-yellow); color:white; border-radius:30px; font-weight:bold;">一覧を見る</a>
@@ -449,6 +523,13 @@ window.toggleAccordion = function(el) {
 
 document.addEventListener('DOMContentLoaded', () => {
     loadNews(); loadNextStage(); loadPastStages(); loadMembers(); loadExternal(); loadArticle(); setupModal();
+    const jumpParam = new URLSearchParams(window.location.search).get('jump');
+    if (jumpParam && JUMP_CONTAINER_IDS[jumpParam]) {
+        setTimeout(() => {
+            const el = document.getElementById(JUMP_CONTAINER_IDS[jumpParam]);
+            if (el) (el.closest('section') || el).scrollIntoView({ behavior: 'smooth' });
+        }, 400);
+    }
     const hamBtn = document.getElementById('js-hamburger'); const nav = document.getElementById('js-nav');
     if(hamBtn && nav) {
         hamBtn.addEventListener('click', () => { hamBtn.classList.toggle('active'); nav.classList.toggle('active'); });
