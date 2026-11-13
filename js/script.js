@@ -6,8 +6,27 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
+// ★ 予約時刻に到達した瞬間に画面を自動更新するタイマー管理
+let scheduledTimers = {};
+function registerAutoRefresh(key, targetTimeMs, callback) {
+    const delay = targetTimeMs - new Date().getTime();
+    // 24時間（86,400,000ミリ秒）以内に到来する予約のみタイマーをセット
+    if (delay > 0 && delay < 86400000) {
+        if (!scheduledTimers[key] || targetTimeMs < scheduledTimers[key].targetTime) {
+            if (scheduledTimers[key]) clearTimeout(scheduledTimers[key].timerId);
+            scheduledTimers[key] = {
+                targetTime: targetTimeMs,
+                timerId: setTimeout(() => {
+                    delete scheduledTimers[key];
+                    callback();
+                }, delay + 200)
+            };
+        }
+    }
+}
+
 // ★ 公開ステータス・予約日時のリアルタイム判定関数
-function checkPublishStatus(statusStr) {
+function checkPublishStatus(statusStr, refreshKey, refreshCallback) {
     if (!statusStr) return { isPublic: false, isPin: false };
     const s = statusStr.trim();
     const isPin = s.includes('ピン留め') || s.includes('📌');
@@ -19,8 +38,12 @@ function checkPublishStatus(statusStr) {
         if (m && m[1]) {
             const targetTime = new Date(m[1]).getTime();
             const now = new Date().getTime();
-            if (!isNaN(targetTime) && now >= targetTime) {
-                return { isPublic: true, isPin: isPin };
+            if (!isNaN(targetTime)) {
+                if (now >= targetTime) {
+                    return { isPublic: true, isPin: isPin };
+                } else if (refreshKey && refreshCallback) {
+                    registerAutoRefresh(refreshKey, targetTime, refreshCallback);
+                }
             }
         }
     }
@@ -122,7 +145,7 @@ async function loadNews() {
     const text = await res.text();
 
     let rows = text.split('\n').slice(1).map((row, index) => ({ data: row.split('\t'), id: index }));
-    rows = rows.filter(item => checkPublishStatus(item.data[0]).isPublic);
+    rows = rows.filter(item => checkPublishStatus(item.data[0], 'news', loadNews).isPublic);
 
     rows.sort((a, b) => {
         const aPin = checkPublishStatus(a.data[0]).isPin ? 1 : 0;
@@ -192,7 +215,7 @@ async function loadArticle() {
     const rows = text.split('\n').slice(1);
 
     const cols = rows[articleId]?.split('\t');
-    const pubState = checkPublishStatus(cols ? cols[0] : '');
+    const pubState = checkPublishStatus(cols ? cols[0] : '', 'article', loadArticle);
     if (!cols || !pubState.isPublic) return;
 
     const isPin = pubState.isPin;
@@ -237,7 +260,7 @@ async function loadNextStage() {
     const text = await res.text();
     const cols = text.split('\n')[1]?.split('\t');
     
-    if (cols && checkPublishStatus(cols[0]).isPublic) {
+    if (cols && checkPublishStatus(cols[0], 'stage', loadNextStage).isPublic) {
         const groupName = cols[1] || '愛知淑徳大学演劇研究会「月とカニ」';
         const titleText = cols[2]?.trim() ? `『${cols[2]}』` : '';
         
@@ -328,7 +351,7 @@ async function loadPastStages() {
 
     rows.forEach(row => {
         const cols = row.split('\t');
-        if (cols.length < 3 || !checkPublishStatus(cols[0]).isPublic) return;
+        if (cols.length < 3 || !checkPublishStatus(cols[0], 'past', loadPastStages).isPublic) return;
         const period = cols[1] || ''; const title = cols[2] || ''; const rawDate = cols[3] || '';
         const place = autoLink((cols[4] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim());
         const script = autoLink(cols[5]?.trim() || ''); const direction = autoLink(cols[6]?.trim() || '');
@@ -368,7 +391,7 @@ async function loadMembers() {
     const groups = {};
     rows.forEach(row => {
         const cols = row.split('\t');
-        if (cols.length < 3 || !checkPublishStatus(cols[0]).isPublic) return;
+        if (cols.length < 3 || !checkPublishStatus(cols[0], 'member', loadMembers).isPublic) return;
         const term = cols[1].trim();
         if (!groups[term]) groups[term] = [];
         groups[term].push({ name: cols[2], role: cols[3] || '' });
@@ -396,7 +419,7 @@ async function loadExternal() {
     let html = '';
     rows.forEach(row => {
         const cols = row.split('\t');
-        if (cols.length < 3 || !checkPublishStatus(cols[0]).isPublic) return;
+        if (cols.length < 3 || !checkPublishStatus(cols[0], 'external', loadExternal).isPublic) return;
         const title = cols[1] || ''; const date = cols[2] || '';
         const place = (cols[3] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim();
         const detail = formatRichContent(cols[4] || '');
