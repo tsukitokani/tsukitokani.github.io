@@ -6,11 +6,9 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
-// ★ 予約時刻に到達した瞬間に画面を自動更新するタイマー管理
 let scheduledTimers = {};
 function registerAutoRefresh(key, targetTimeMs, callback) {
     const delay = targetTimeMs - new Date().getTime();
-    // 24時間（86,400,000ミリ秒）以内に到来する予約のみタイマーをセット
     if (delay > 0 && delay < 86400000) {
         if (!scheduledTimers[key] || targetTimeMs < scheduledTimers[key].targetTime) {
             if (scheduledTimers[key]) clearTimeout(scheduledTimers[key].timerId);
@@ -25,12 +23,11 @@ function registerAutoRefresh(key, targetTimeMs, callback) {
     }
 }
 
-// ★ 公開ステータス・予約日時のリアルタイム判定関数
 function checkPublishStatus(statusStr, refreshKey, refreshCallback) {
     if (!statusStr) return { isPublic: false, isPin: false };
     const s = statusStr.trim();
     const isPin = s.includes('ピン留め') || s.includes('📌');
-    if (s === '公開' || s === '📌ピン留め') {
+    if (s === '公開' || s === 'ピン留め' || s === '📌ピン留め') {
         return { isPublic: true, isPin: isPin };
     }
     if (s.includes('予約:')) {
@@ -160,7 +157,6 @@ async function loadNews() {
     rows.forEach(item => {
         const cols = item.data;
         if (cols.length < 4) return;
-        const isPin = checkPublishStatus(cols[0]).isPin;
         const date = cols[1] || '';
         const tag = cols[2] || '';
         const title = cols[3] || '';
@@ -175,7 +171,6 @@ async function loadNews() {
 
         const colorStyle = pageList ? 'style="color:#333; border-bottom:1px solid #ddd;"' : '';
         const tagStyle = pageList ? 'style="background:var(--main-yellow); color:white;"' : '';
-        const pinIcon = isPin ? '📌 ' : '';
 
         if (linkUrl) {
             html += `
@@ -183,7 +178,7 @@ async function loadNews() {
                 <a href="${linkUrl}" ${colorStyle} ${linkUrl.startsWith('http') ? 'target="_blank"' : ''}>
                     <span class="news-date">${date}</span>
                     <span class="news-tag" ${tagStyle}>${tag}</span>
-                    <span class="news-title">${pinIcon}${title}</span>
+                    <span class="news-title">${title}</span>
                 </a>
             </li>`;
         } else {
@@ -192,7 +187,7 @@ async function loadNews() {
                 <div class="news-content" ${colorStyle}>
                     <span class="news-date">${date}</span>
                     <span class="news-tag" ${tagStyle}>${tag}</span>
-                    <span class="news-title">${pinIcon}${title}</span>
+                    <span class="news-title">${title}</span>
                 </div>
             </li>`;
         }
@@ -218,7 +213,6 @@ async function loadArticle() {
     const pubState = checkPublishStatus(cols ? cols[0] : '', 'article', loadArticle);
     if (!cols || !pubState.isPublic) return;
 
-    const isPin = pubState.isPin;
     const date = cols[1] || '';
     const tag = cols[2] || '';
     const title = cols[3] || '';
@@ -239,7 +233,7 @@ async function loadArticle() {
         <div style="margin-bottom: 20px; border-bottom: 2px solid var(--main-yellow); padding-bottom: 15px;">
             <span class="news-tag" style="background:var(--main-yellow); color:white; display:inline-block; margin-bottom:10px; padding: 4px 12px; border-radius: 2px; font-weight: 800; font-size: 0.8rem;">${tag}</span>
             <span style="font-weight:bold; color:#666; margin-left:15px;">${date}</span>
-            <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${isPin ? '📌 ' : ''}${title}</h2>
+            <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${title}</h2>
         </div>
         ${imgHtml}
         <div class="rich-content">${content}</div>
