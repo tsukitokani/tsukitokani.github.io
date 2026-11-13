@@ -6,7 +6,27 @@ const formatImg = url => {
     return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 };
 
-// URLの安全なリンク化処理
+// ★ 公開ステータス・予約日時のリアルタイム判定関数
+function checkPublishStatus(statusStr) {
+    if (!statusStr) return { isPublic: false, isPin: false };
+    const s = statusStr.trim();
+    const isPin = s.includes('ピン留め') || s.includes('📌');
+    if (s === '公開' || s === '📌ピン留め') {
+        return { isPublic: true, isPin: isPin };
+    }
+    if (s.includes('予約:')) {
+        const m = s.match(/予約:(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+        if (m && m[1]) {
+            const targetTime = new Date(m[1]).getTime();
+            const now = new Date().getTime();
+            if (!isNaN(targetTime) && now >= targetTime) {
+                return { isPublic: true, isPin: isPin };
+            }
+        }
+    }
+    return { isPublic: false, isPin: false };
+}
+
 function autoLink(text) {
     if (!text) return '';
     if (text.includes('href=')) return text;
@@ -14,24 +34,17 @@ function autoLink(text) {
     return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 
-// ★ 改行とHTMLタグの最適化処理（過去の<br>データとQuillの<p>データを両方自然な行間に補正）
 function formatRichContent(text) {
     if (!text) return '';
-    
-    // 閉じられていない <b> があれば <br> の誤入力として安全に置換
     if (text.includes('<b>') && !text.includes('</b>')) {
         text = text.replace(/<b>/g, '<br>');
     }
-    
-    // <p> を含まない過去データの場合、改行コード(\n)を<br>に統一
     if (!text.includes('<p>') && !text.includes('<p ')) {
         text = text.replace(/\r?\n/g, '<br>');
     }
-    
     return autoLink(text);
 }
 
-// ★ 記事や本文の行間を自然に保つためのスタイル注入
 function injectRichContentStyle() {
     if (document.getElementById('js-rich-content-style')) return;
     const style = document.createElement('style');
@@ -59,7 +72,6 @@ function injectRichContentStyle() {
     document.head.appendChild(style);
 }
 
-// 日程テキストを「日付(右揃え)」と「時間」に自動分離して綺麗に整列させる処理
 function formatSchedule(text) {
     if (!text) return '';
     const lines = text.split(/<br\s*\/?>|\n/);
@@ -88,7 +100,6 @@ function formatSchedule(text) {
     return html;
 }
 
-// 日付文字列をスコア化して比較する関数 (YYYY.MM.DD / YYYY.M.D 対応)
 function parseDateScore(dateStr) {
     if (!dateStr) return 0;
     const parts = dateStr.trim().replace(/[./]/g, '-').split('-');
@@ -111,11 +122,11 @@ async function loadNews() {
     const text = await res.text();
 
     let rows = text.split('\n').slice(1).map((row, index) => ({ data: row.split('\t'), id: index }));
-    rows = rows.filter(item => item.data[0] === '公開' || (item.data[0] && item.data[0].includes('ピン留め')));
+    rows = rows.filter(item => checkPublishStatus(item.data[0]).isPublic);
 
     rows.sort((a, b) => {
-        const aPin = a.data[0] && a.data[0].includes('ピン留め') ? 1 : 0;
-        const bPin = b.data[0] && b.data[0].includes('ピン留め') ? 1 : 0;
+        const aPin = checkPublishStatus(a.data[0]).isPin ? 1 : 0;
+        const bPin = checkPublishStatus(b.data[0]).isPin ? 1 : 0;
         if (aPin !== bPin) return bPin - aPin;
         return parseDateScore(b.data[1]) - parseDateScore(a.data[1]);
     });
@@ -126,7 +137,7 @@ async function loadNews() {
     rows.forEach(item => {
         const cols = item.data;
         if (cols.length < 4) return;
-        const isPin = cols[0] && cols[0].includes('ピン留め');
+        const isPin = checkPublishStatus(cols[0]).isPin;
         const date = cols[1] || '';
         const tag = cols[2] || '';
         const title = cols[3] || '';
@@ -181,14 +192,13 @@ async function loadArticle() {
     const rows = text.split('\n').slice(1);
 
     const cols = rows[articleId]?.split('\t');
-    if (!cols || (cols[0] !== '公開' && !cols[0]?.includes('ピン留め'))) return;
+    const pubState = checkPublishStatus(cols ? cols[0] : '');
+    if (!cols || !pubState.isPublic) return;
 
-    const isPin = cols[0]?.includes('ピン留め');
+    const isPin = pubState.isPin;
     const date = cols[1] || '';
     const tag = cols[2] || '';
     const title = cols[3] || '';
-    
-    // ★ 最適化された本文を取得
     const content = formatRichContent(cols[4] || '');
     const imgUrl1 = formatImg(cols[5]);
     const imgUrl2 = formatImg(cols[6]);
@@ -209,7 +219,6 @@ async function loadArticle() {
             <h2 style="font-size: 1.8rem; margin: 10px 0 0 0; line-height: 1.4;">${isPin ? '📌 ' : ''}${title}</h2>
         </div>
         ${imgHtml}
-        <!-- ★ white-space: pre-wrap を除去して正常な段落余白に修正 -->
         <div class="rich-content">${content}</div>
         <div style="text-align: center; margin-top: 50px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
             <a href="index.html" style="display:inline-block; padding: 10px 30px; background:var(--main-blue); color:white; border-radius:30px; font-weight:bold;">← ホームに戻る</a>
@@ -226,9 +235,9 @@ async function loadNextStage() {
 
     const res = await fetch(`${BASE_URL}gid=2122620919&single=true&output=tsv&t=${new Date().getTime()}`);
     const text = await res.text();
-    const cols = text.split('\n')[1].split('\t');
+    const cols = text.split('\n')[1]?.split('\t');
     
-    if (cols && cols[0] === '公開') {
+    if (cols && checkPublishStatus(cols[0]).isPublic) {
         const groupName = cols[1] || '愛知淑徳大学演劇研究会「月とカニ」';
         const titleText = cols[2]?.trim() ? `『${cols[2]}』` : '';
         
@@ -319,7 +328,7 @@ async function loadPastStages() {
 
     rows.forEach(row => {
         const cols = row.split('\t');
-        if (cols.length < 3 || cols[0] !== '公開') return;
+        if (cols.length < 3 || !checkPublishStatus(cols[0]).isPublic) return;
         const period = cols[1] || ''; const title = cols[2] || ''; const rawDate = cols[3] || '';
         const place = autoLink((cols[4] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim());
         const script = autoLink(cols[5]?.trim() || ''); const direction = autoLink(cols[6]?.trim() || '');
@@ -359,7 +368,7 @@ async function loadMembers() {
     const groups = {};
     rows.forEach(row => {
         const cols = row.split('\t');
-        if (cols.length < 3 || cols[0] !== '公開') return;
+        if (cols.length < 3 || !checkPublishStatus(cols[0]).isPublic) return;
         const term = cols[1].trim();
         if (!groups[term]) groups[term] = [];
         groups[term].push({ name: cols[2], role: cols[3] || '' });
@@ -387,7 +396,7 @@ async function loadExternal() {
     let html = '';
     rows.forEach(row => {
         const cols = row.split('\t');
-        if (cols.length < 3 || cols[0] !== '公開') return;
+        if (cols.length < 3 || !checkPublishStatus(cols[0]).isPublic) return;
         const title = cols[1] || ''; const date = cols[2] || '';
         const place = (cols[3] || '').replace(/<br\s*\/?>/gi, ' ').replace(/\r?\n/g, ' ').trim();
         const detail = formatRichContent(cols[4] || '');
